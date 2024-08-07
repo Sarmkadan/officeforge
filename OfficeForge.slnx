@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OfficeForge.Cli/OfficeForge.Cli.csproj" />
+    <Project Path="src/OfficeForge/OfficeForge.csproj" />
+  </Folder>
+</Solution>
