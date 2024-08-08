@@ -6,9 +6,22 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <AssemblyName>officeforge-cli</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>officeforge</ToolCommandName>
+    <PackageId>OfficeForge.Cli</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Vladyslav Zaiets</Authors>
+    <Company>Vladyslav Zaiets</Company>
+    <Description>Command-line tool to create, edit and convert Word/Excel/PowerPoint documents without Microsoft Office. Built on the OpenXML SDK.</Description>
+    <PackageTags>openxml;docx;xlsx;pptx;office;cross-platform</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Sarmkadan/officeforge</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Sarmkadan/officeforge</PackageProjectUrl>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <ProjectReference Include="../OfficeForge/OfficeForge.csproj" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>
