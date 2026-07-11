@@ -6,6 +6,7 @@ public sealed class DocumentModel
 
     public ParagraphModel AddParagraph(string text, RunStyle? style = null)
     {
+        ArgumentNullException.ThrowIfNull(text);
         var paragraph = new ParagraphModel();
         paragraph.Runs.Add(new RunModel(text, style ?? RunStyle.Default));
         Paragraphs.Add(paragraph);

@@ -3,16 +3,25 @@ using OfficeForge.Models;
 
 namespace OfficeForge.Templates;
 
-public sealed partial class TemplateFiller(IReadOnlyDictionary<string, string> values)
+public sealed partial class TemplateFiller
 {
+    private readonly IReadOnlyDictionary<string, string> _values;
+
+    public TemplateFiller(IReadOnlyDictionary<string, string> values) =>
+        _values = values ?? throw new ArgumentNullException(nameof(values));
+
     [GeneratedRegex(@"\{\{\s*([\w.-]+)\s*\}\}")]
     private static partial Regex PlaceholderRegex();
 
-    public string FillText(string text) =>
-        PlaceholderRegex().Replace(text, m => values.TryGetValue(m.Groups[1].Value, out var v) ? v : m.Value);
+    public string FillText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return PlaceholderRegex().Replace(text, m => _values.TryGetValue(m.Groups[1].Value, out var v) ? v : m.Value);
+    }
 
     public void Fill(DocumentModel document)
     {
+        ArgumentNullException.ThrowIfNull(document);
         foreach (var paragraph in document.Paragraphs)
         {
             if (paragraph.Runs.Count == 0) continue;
@@ -26,6 +35,7 @@ public sealed partial class TemplateFiller(IReadOnlyDictionary<string, string> v
 
     public void Fill(WorkbookModel workbook)
     {
+        ArgumentNullException.ThrowIfNull(workbook);
         foreach (var sheet in workbook.Sheets)
         {
             foreach (var (cellRef, value) in sheet.Cells.ToList())
@@ -39,9 +49,11 @@ public sealed partial class TemplateFiller(IReadOnlyDictionary<string, string> v
 
     public static IReadOnlyDictionary<string, string> ParsePairs(IEnumerable<string> pairs)
     {
+        ArgumentNullException.ThrowIfNull(pairs);
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var pair in pairs)
         {
+            ArgumentNullException.ThrowIfNull(pair);
             var separator = pair.IndexOf('=');
             if (separator <= 0)
                 throw new FormatException($"Expected key=value, got '{pair}'.");

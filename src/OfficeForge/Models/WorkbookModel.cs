@@ -17,7 +17,7 @@ public sealed class WorkbookModel
 
 public sealed class SheetModel(string name)
 {
-    public string Name { get; set; } = name;
+    public string Name { get; set; } = name ?? throw new ArgumentNullException(nameof(name));
     public Dictionary<CellRef, CellValue> Cells { get; } = [];
 
     public CellValue this[CellRef cell]
