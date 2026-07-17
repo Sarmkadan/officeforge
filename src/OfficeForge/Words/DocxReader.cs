@@ -33,9 +33,9 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
                 if (text.Length == 0) continue;
                 var props = run.RunProperties;
                 var style = new Models.RunStyle(
-                    Bold: props?.Bold is not null,
-                    Italic: props?.Italic is not null,
-                    Underline: props?.Underline is not null,
+                    Bold: IsOn(props?.Bold),
+                    Italic: IsOn(props?.Italic),
+                    Underline: props?.Underline is { } u && u.Val?.Value != UnderlineValues.None,
                     FontName: props?.RunFonts?.Ascii?.Value);
                 paragraphModel.Runs.Add(new RunModel(text, style));
             }
@@ -43,4 +43,9 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
         }
         return model;
     }
+
+    // OnOff semantics: the bare element (<w:b/>) means on; an explicit
+    // w:val ("0"/"false") can turn it off.
+    private static bool IsOn(OnOffType? property) =>
+        property is not null && (property.Val is null || property.Val.Value);
 }
