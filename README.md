@@ -47,9 +47,13 @@ officeforge convert report.xlsx --format markdown
 | --- | --- |
 | Excel (.xlsx) | read, write, cell-level editing, formulas |
 | Word (.docx) | read, write (paragraphs, headings, tables) |
-| PowerPoint (.pptx) | read (slides, text, notes) |
+| PowerPoint (.pptx) | read (slides, titles, shape text) |
 | Templates | `{{key}}` placeholder fill in .docx and .xlsx |
 | Export | text, markdown, json from any supported format |
+
+## Architecture
+
+Readers map each format to a plain in-memory model (`WorkbookModel`, `DocumentModel`, `PresentationModel`); writers, exporters and the template filler operate on those models - the OpenXML SDK never leaks into the public API. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module breakdown, design decisions and known limitations.
 
 ## Requirements
 
