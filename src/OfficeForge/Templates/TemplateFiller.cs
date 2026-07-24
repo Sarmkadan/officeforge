@@ -1,3 +1,4 @@
+using System.Security;
 using System.Text.RegularExpressions;
 using OfficeForge.Models;
 
@@ -16,7 +17,13 @@ public sealed partial class TemplateFiller
     public string FillText(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        return PlaceholderRegex().Replace(text, m => _values.TryGetValue(m.Groups[1].Value, out var v) ? v : m.Value);
+        return PlaceholderRegex().Replace(text, m => _values.TryGetValue(m.Groups[1].Value, out var v) ? EscapeXml(v) : m.Value);
+    }
+
+    private static string EscapeXml(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return SecurityElement.Escape(value);
     }
 
     public void Fill(DocumentModel document)
