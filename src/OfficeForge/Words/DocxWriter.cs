@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
@@ -6,9 +7,17 @@ using OfficeForge.Models;
 
 namespace OfficeForge.Words;
 
+/// <summary>
+/// Writes a <see cref="DocumentModel"/> to a DOCX stream or file.
+/// </summary>
 public sealed class DocxWriter : IDocumentWriter<DocumentModel>
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Writes the supplied <paramref name="model"/> to the given <paramref name="stream"/>.
+    /// </summary>
+    /// <param name="model">The document model to write.</param>
+    /// <param name="stream">The target stream.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="model"/> or <paramref name="stream"/> is <c>null</c>.</exception>
     public void Write(DocumentModel model, Stream stream)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -22,25 +31,38 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
             if (paragraphModel.Kind == ParagraphKind.Heading && paragraphModel.HeadingLevel is > 0 and <= 9)
                 paragraph.ParagraphProperties = new ParagraphProperties(
                     new ParagraphStyleId { Val = $"Heading{paragraphModel.HeadingLevel}" });
+
             foreach (var runModel in paragraphModel.Runs)
             {
                 var run = new Run();
                 var props = new RunProperties();
+
                 if (runModel.Style.Bold) props.Append(new Bold());
                 if (runModel.Style.Italic) props.Append(new Italic());
                 if (runModel.Style.Underline) props.Append(new Underline { Val = UnderlineValues.Single });
                 if (runModel.Style.FontName is { } font) props.Append(new RunFonts { Ascii = font });
+                if (runModel.Style.FontSize is double size)
+                    props.Append(new FontSize { Val = size.ToString(CultureInfo.InvariantCulture) });
+
                 if (props.HasChildren) run.RunProperties = props;
                 run.Append(new Text(runModel.Text) { Space = SpaceProcessingModeValues.Preserve });
                 paragraph.Append(run);
             }
+
             body.Append(paragraph);
         }
+
         mainPart.Document = new Document(body);
         mainPart.Document.Save();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Writes the supplied <paramref name="model"/> to a file at <paramref name="path"/>.
+    /// </summary>
+    /// <param name="model">The document model to write.</param>
+    /// <param name="path">The destination file path.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="model"/> or <paramref name="path"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is an empty string.</exception>
     public void Write(DocumentModel model, string path)
     {
         ArgumentNullException.ThrowIfNull(model);
