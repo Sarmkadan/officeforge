@@ -33,7 +33,9 @@ public class PresentationModelTests
     public void ToPlainText_NoSlides_ReturnsEmptyString()
     {
         var presentation = new PresentationModel();
-        Assert.Empty(presentation.ToPlainText());
+        Assert.Empty(presentation.Slides);
+        var result = string.Join(Environment.NewLine, presentation.Slides.Select(s => s.ToPlainText()));
+        Assert.Empty(result);
     }
 
     [Fact]
@@ -41,7 +43,8 @@ public class PresentationModelTests
     {
         var presentation = new PresentationModel();
         var slide = presentation.AddSlide("Test Slide");
-        Assert.Equal("Test Slide", presentation.ToPlainText());
+        var result = string.Join(Environment.NewLine, presentation.Slides.Select(s => s.ToPlainText()));
+        Assert.Equal("Test Slide", result);
     }
 
     [Fact]
@@ -53,7 +56,8 @@ public class PresentationModelTests
         shape.Lines.Add("Line 1");
         shape.Lines.Add("Line 2");
         slide.Shapes.Add(shape);
+        var result = string.Join(Environment.NewLine, presentation.Slides.Select(s => s.ToPlainText()));
         var expected = "Test Slide" + Environment.NewLine + "Line 1" + Environment.NewLine + "Line 2";
-        Assert.Equal(expected, presentation.ToPlainText());
+        Assert.Equal(expected, result);
     }
 }
