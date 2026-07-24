@@ -1,3 +1,4 @@
+using System.IO;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Presentation;
 using OfficeForge.Models;
@@ -7,14 +8,10 @@ namespace OfficeForge.Slides;
 
 public sealed class PptxReader : IDocumentReader<PresentationModel>
 {
-    public PresentationModel Read(string path)
-    {
-        using var stream = File.OpenRead(path);
-        return Read(stream);
-    }
-
+    /// <inheritdoc />
     public PresentationModel Read(Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(stream);
         using var document = PresentationDocument.Open(stream, false);
         var presentationPart = document.PresentationPart ?? throw new InvalidDataException("Presentation part missing.");
         var model = new PresentationModel();
@@ -44,5 +41,14 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
             }
         }
         return model;
+    }
+
+    /// <inheritdoc />
+    public PresentationModel Read(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        using var stream = File.OpenRead(path);
+        return Read(stream);
     }
 }

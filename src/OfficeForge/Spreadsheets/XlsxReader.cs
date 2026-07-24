@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using OfficeForge.Models;
@@ -7,14 +8,10 @@ namespace OfficeForge.Spreadsheets;
 
 public sealed class XlsxReader : IDocumentReader<WorkbookModel>
 {
-    public WorkbookModel Read(string path)
-    {
-        using var stream = File.OpenRead(path);
-        return Read(stream);
-    }
-
+    /// <inheritdoc />
     public WorkbookModel Read(Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(stream);
         using var document = SpreadsheetDocument.Open(stream, false);
         var workbookPart = document.WorkbookPart ?? throw new InvalidDataException("Workbook part missing.");
         var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable?
@@ -34,6 +31,15 @@ public sealed class XlsxReader : IDocumentReader<WorkbookModel>
             }
         }
         return model;
+    }
+
+    /// <inheritdoc />
+    public WorkbookModel Read(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        using var stream = File.OpenRead(path);
+        return Read(stream);
     }
 
     private static Models.CellValue ConvertCell(Cell cell, string[] sharedStrings)

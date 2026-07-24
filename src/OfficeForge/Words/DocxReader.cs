@@ -1,3 +1,4 @@
+using System.IO;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using OfficeForge.Models;
@@ -6,14 +7,10 @@ namespace OfficeForge.Words;
 
 public sealed class DocxReader : IDocumentReader<DocumentModel>
 {
-    public DocumentModel Read(string path)
-    {
-        using var stream = File.OpenRead(path);
-        return Read(stream);
-    }
-
+    /// <inheritdoc />
     public DocumentModel Read(Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(stream);
         using var document = WordprocessingDocument.Open(stream, false);
         var body = document.MainDocumentPart?.Document.Body ?? throw new InvalidDataException("Document body missing.");
         var model = new DocumentModel();
@@ -42,6 +39,15 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
             model.Paragraphs.Add(paragraphModel);
         }
         return model;
+    }
+
+    /// <inheritdoc />
+    public DocumentModel Read(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        using var stream = File.OpenRead(path);
+        return Read(stream);
     }
 
     // OnOff semantics: the bare element (<w:b/>) means on; an explicit

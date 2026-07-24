@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -8,14 +9,11 @@ namespace OfficeForge.Spreadsheets;
 
 public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>
 {
-    public void Write(WorkbookModel model, string path)
-    {
-        using var stream = File.Create(path);
-        Write(model, stream);
-    }
-
+    /// <inheritdoc />
     public void Write(WorkbookModel model, Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(stream);
         using var document = SpreadsheetDocument.Create(stream, SpreadsheetDocumentType.Workbook);
         var workbookPart = document.AddWorkbookPart();
         workbookPart.Workbook = new Workbook();
@@ -41,6 +39,16 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>
             });
         }
         workbookPart.Workbook.Save();
+    }
+
+    /// <inheritdoc />
+    public void Write(WorkbookModel model, string path)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        using var stream = File.Create(path);
+        Write(model, stream);
     }
 
     private static Cell CreateCell(CellRef cellRef, Models.CellValue value)

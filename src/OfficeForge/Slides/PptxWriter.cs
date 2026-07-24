@@ -1,3 +1,4 @@
+using System.IO;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Presentation;
 using OfficeForge.Models;
@@ -11,22 +12,6 @@ namespace OfficeForge.Slides;
 public sealed class PptxWriter : IDocumentWriter<PresentationModel>
 {
     /// <summary>
-    /// Writes a PowerPoint presentation to a file.
-    /// </summary>
-    /// <param name="model">The presentation model to write.</param>
-    /// <param name="path">The file path to write to.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/></exception>
-    /// <exception cref="ArgumentException"><paramref name="path"/> is <see langword="null"/>, empty, or whitespace</exception>
-    public void Write(PresentationModel model, string path)
-    {
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentException.ThrowIfNullOrEmpty(path);
-
-        using var stream = File.Create(path);
-        Write(model, stream);
-    }
-
-    /// <summary>
     /// Writes a PowerPoint presentation to a stream.
     /// </summary>
     /// <param name="model">The presentation model to write.</param>
@@ -36,7 +21,6 @@ public sealed class PptxWriter : IDocumentWriter<PresentationModel>
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(stream);
-
         using var document = PresentationDocument.Create(stream, DocumentFormat.OpenXml.PresentationDocumentType.Presentation);
         var presentationPart = document.AddPresentationPart();
         presentationPart.Presentation = new Presentation();
@@ -59,6 +43,22 @@ public sealed class PptxWriter : IDocumentWriter<PresentationModel>
         }
 
         presentationPart.Presentation.Save();
+    }
+
+    /// <summary>
+    /// Writes a PowerPoint presentation to a file.
+    /// </summary>
+    /// <param name="model">The presentation model to write.</param>
+    /// <param name="path">The file path to write to.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/></exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is <see langword="null"/>, empty, or whitespace</exception>
+    public void Write(PresentationModel model, string path)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        using var stream = File.Create(path);
+        Write(model, stream);
     }
 
     private static Slide CreateSlide(SlideModel slideModel)

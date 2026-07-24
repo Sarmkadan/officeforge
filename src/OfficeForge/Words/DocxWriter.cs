@@ -1,3 +1,4 @@
+using System.IO;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -7,14 +8,11 @@ namespace OfficeForge.Words;
 
 public sealed class DocxWriter : IDocumentWriter<DocumentModel>
 {
-    public void Write(DocumentModel model, string path)
-    {
-        using var stream = File.Create(path);
-        Write(model, stream);
-    }
-
+    /// <inheritdoc />
     public void Write(DocumentModel model, Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(stream);
         using var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document);
         var mainPart = document.AddMainDocumentPart();
         var body = new Body();
@@ -40,5 +38,15 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
         }
         mainPart.Document = new Document(body);
         mainPart.Document.Save();
+    }
+
+    /// <inheritdoc />
+    public void Write(DocumentModel model, string path)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        using var stream = File.Create(path);
+        Write(model, stream);
     }
 }
