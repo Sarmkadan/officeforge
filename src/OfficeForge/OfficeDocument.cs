@@ -31,6 +31,10 @@ public static class OfficeDocument
     public static DocumentModel OpenDocument(string path) => new DocxReader().Read(path);
     public static PresentationModel OpenPresentation(string path) => new PptxReader().Read(path);
 
+    public static WorkbookModel OpenWorkbook(string path, ReaderOptions options) => new XlsxReader().Read(path, options);
+    public static DocumentModel OpenDocument(string path, ReaderOptions options) => new DocxReader().Read(path, options);
+    public static PresentationModel OpenPresentation(string path, ReaderOptions options) => new PptxReader().Read(path, options);
+
     public static void SaveWorkbook(WorkbookModel workbook, string path)
     {
         ArgumentNullException.ThrowIfNull(workbook);
