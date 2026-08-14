@@ -24,14 +24,45 @@ public sealed class SheetModel(string name)
 
     public CellValue this[CellRef cell]
     {
-        get => Cells.TryGetValue(cell, out var value) ? value : CellValue.Empty;
-        set => Cells[cell] = value;
+        get 
+        {
+            ValidateCellReference(cell);
+            return Cells.TryGetValue(cell, out var value) ? value : CellValue.Empty;
+        }
+        set 
+        {
+            ValidateCellReference(cell);
+            Cells[cell] = value;
+        }
     }
 
     public CellValue this[string a1]
     {
-        get => this[CellRef.Parse(a1)];
-        set => this[CellRef.Parse(a1)] = value;
+        get 
+        {
+            var cellRef = CellRef.Parse(a1);
+            ValidateCellReference(cellRef);
+            return this[cellRef];
+        }
+        set 
+        {
+            var cellRef = CellRef.Parse(a1);
+            ValidateCellReference(cellRef);
+            this[cellRef] = value;
+        }
+    }
+
+    private static void ValidateCellReference(CellRef cellRef)
+    {
+        if (cellRef.Row < 1 || cellRef.Row > 1048576)
+        {
+            throw new ArgumentException("Row number is out of range (1-1048576).", nameof(cellRef));
+        }
+
+        if (cellRef.Column < 1 || cellRef.Column > 16384)
+        {
+            throw new ArgumentException("Column number is out of range (1-16384).", nameof(cellRef));
+        }
     }
 
     public int RowCount => Cells.Count == 0 ? 0 : Cells.Keys.Max(c => c.Row);
