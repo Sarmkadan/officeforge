@@ -29,7 +29,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string Export(WorkbookModel workbook, ExportFormat format)
     {
-        ArgumentNullException.ThrowIfNull(workbook);
+        ExporterValidation.ValidateModel(workbook, nameof(workbook));
         return format switch
         {
             ExportFormat.Markdown => ToMarkdown(workbook),
@@ -46,7 +46,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string ToPlainText(WorkbookModel workbook)
     {
-        ArgumentNullException.ThrowIfNull(workbook);
+        ExporterValidation.ValidateModel(workbook, nameof(workbook));
         var sb = new StringBuilder();
         foreach (var sheet in workbook.Sheets)
         {
@@ -65,7 +65,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string ToMarkdown(WorkbookModel workbook)
     {
-        ArgumentNullException.ThrowIfNull(workbook);
+        ExporterValidation.ValidateModel(workbook, nameof(workbook));
         var sb = new StringBuilder();
         foreach (var sheet in workbook.Sheets)
         {
@@ -89,7 +89,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string ToJson(WorkbookModel workbook)
     {
-        ArgumentNullException.ThrowIfNull(workbook);
+        ExporterValidation.ValidateModel(workbook, nameof(workbook));
         var payload = workbook.Sheets.ToDictionary(
             s => s.Name,
             s => s.OrderedCells().ToDictionary(kv => kv.Key.ToA1(), kv => kv.Value.ToString()));
@@ -127,7 +127,7 @@ public static class DocumentExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="document"/> is <c>null</c>.</exception>
     public static string Export(DocumentModel document, ExportFormat format)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ExporterValidation.ValidateModel(document, nameof(document));
         return format switch
         {
             ExportFormat.Markdown => ToMarkdown(document),
@@ -144,7 +144,7 @@ public static class DocumentExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="document"/> is <c>null</c>.</exception>
     public static string ToMarkdown(DocumentModel document)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ExporterValidation.ValidateModel(document, nameof(document));
         var sb = new StringBuilder();
         foreach (var paragraph in document.Paragraphs)
         {
@@ -167,7 +167,7 @@ public static class DocumentExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="document"/> is <c>null</c>.</exception>
     public static string ToJson(DocumentModel document)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ExporterValidation.ValidateModel(document, nameof(document));
         var payload = document.Paragraphs.Select(p => new
         {
             kind = p.Kind.ToString(),
@@ -200,7 +200,7 @@ public static class PresentationExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="presentation"/> is <c>null</c>.</exception>
     public static string Export(PresentationModel presentation, ExportFormat format)
     {
-        ArgumentNullException.ThrowIfNull(presentation);
+        ExporterValidation.ValidateModel(presentation, nameof(presentation));
         return format switch
         {
             ExportFormat.Markdown => ToMarkdown(presentation),
@@ -217,7 +217,7 @@ public static class PresentationExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="presentation"/> is <c>null</c>.</exception>
     public static string ToPlainText(PresentationModel presentation)
     {
-        ArgumentNullException.ThrowIfNull(presentation);
+        ExporterValidation.ValidateModel(presentation, nameof(presentation));
         return string.Join(Environment.NewLine + Environment.NewLine,
             presentation.Slides.Select(s => s.ToPlainText()));
     }
@@ -230,7 +230,7 @@ public static class PresentationExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="presentation"/> is <c>null</c>.</exception>
     public static string ToMarkdown(PresentationModel presentation)
     {
-        ArgumentNullException.ThrowIfNull(presentation);
+        ExporterValidation.ValidateModel(presentation, nameof(presentation));
         var sb = new StringBuilder();
         var index = 1;
         foreach (var slide in presentation.Slides)
@@ -252,7 +252,7 @@ public static class PresentationExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="presentation"/> is <c>null</c>.</exception>
     public static string ToJson(PresentationModel presentation)
     {
-        ArgumentNullException.ThrowIfNull(presentation);
+        ExporterValidation.ValidateModel(presentation, nameof(presentation));
         var payload = presentation.Slides.Select(s => new
         {
             title = s.Title,
@@ -265,4 +265,22 @@ public static class PresentationExporter
 internal static class JsonOptions
 {
     public static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+}
+
+/// <summary>
+/// Centralised validation helpers for exporter classes.
+/// </summary>
+internal static class ExporterValidation
+{
+    /// <summary>
+    /// Validates that the supplied argument is not <c>null</c>.
+    /// </summary>
+    /// <typeparam name="T">The type of the argument.</typeparam>
+    /// <param name="value">The argument value.</param>
+    /// <param name="paramName">The name of the argument.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
+    public static void ValidateModel<T>(T value, string paramName) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(value, paramName);
+    }
 }
