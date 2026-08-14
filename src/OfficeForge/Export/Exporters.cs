@@ -1,7 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using OfficeForge.Models;
+using OfficeForge.Spreadsheets;
+using OfficeForge.Words;
+using OfficeForge.Slides;
 
 namespace OfficeForge.Export;
 
@@ -18,6 +25,7 @@ public enum ExportFormat
 /// <summary>
 /// Exports a <see cref="WorkbookModel"/> to various textual representations.
 /// </summary>
+[Obsolete("Use the generic IDocumentExporter<TModel> implementation instead. This class is kept for compatibility.")]
 public static class WorkbookExporter
 {
     /// <summary>
@@ -36,6 +44,34 @@ public static class WorkbookExporter
             ExportFormat.Json => ToJson(workbook),
             _ => ToPlainText(workbook)
         };
+    }
+
+    /// <summary>
+    /// Reads a workbook from <paramref name="path"/> and exports it using <paramref name="format"/>.
+    /// </summary>
+    /// <param name="path">The path to the workbook file.</param>
+    /// <param name="format">The desired export format.</param>
+    /// <returns>The exported string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
+    public static string Export(string path, ExportFormat format)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var workbook = new XlsxReader().Read(path);
+        return Export(workbook, format);
+    }
+
+    /// <summary>
+    /// Reads a workbook from <paramref name="stream"/> and exports it using <paramref name="format"/>.
+    /// </summary>
+    /// <param name="stream">The stream containing the workbook data.</param>
+    /// <param name="format">The desired export format.</param>
+    /// <returns>The exported string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
+    public static string Export(Stream stream, ExportFormat format)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        var workbook = new XlsxReader().Read(stream);
+        return Export(workbook, format);
     }
 
     /// <summary>
@@ -116,6 +152,7 @@ public static class WorkbookExporter
 /// <summary>
 /// Exports a <see cref="DocumentModel"/> to various textual representations.
 /// </summary>
+[Obsolete("Use the generic IDocumentExporter<TModel> implementation instead. This class is kept for compatibility.")]
 public static class DocumentExporter
 {
     /// <summary>
@@ -134,6 +171,34 @@ public static class DocumentExporter
             ExportFormat.Json => ToJson(document),
             _ => document.ToPlainText()
         };
+    }
+
+    /// <summary>
+    /// Reads a document from <paramref name="path"/> and exports it using <paramref name="format"/>.
+    /// </summary>
+    /// <param name="path">The path to the document file.</param>
+    /// <param name="format">The desired export format.</param>
+    /// <returns>The exported string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
+    public static string Export(string path, ExportFormat format)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var document = new DocxReader().Read(path);
+        return Export(document, format);
+    }
+
+    /// <summary>
+    /// Reads a document from <paramref name="stream"/> and exports it using <paramref name="format"/>.
+    /// </summary>
+    /// <param name="stream">The stream containing the document data.</param>
+    /// <param name="format">The desired export format.</param>
+    /// <returns>The exported string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
+    public static string Export(Stream stream, ExportFormat format)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        var document = new DocxReader().Read(stream);
+        return Export(document, format);
     }
 
     /// <summary>
@@ -189,6 +254,7 @@ public static class DocumentExporter
 /// <summary>
 /// Exports a <see cref="PresentationModel"/> to various textual representations.
 /// </summary>
+[Obsolete("Use the generic IDocumentExporter<TModel> implementation instead. This class is kept for compatibility.")]
 public static class PresentationExporter
 {
     /// <summary>
@@ -207,6 +273,34 @@ public static class PresentationExporter
             ExportFormat.Json => ToJson(presentation),
             _ => ToPlainText(presentation)
         };
+    }
+
+    /// <summary>
+    /// Reads a presentation from <paramref name="path"/> and exports it using <paramref name="format"/>.
+    /// </summary>
+    /// <param name="path">The path to the presentation file.</param>
+    /// <param name="format">The desired export format.</param>
+    /// <returns>The exported string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
+    public static string Export(string path, ExportFormat format)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var presentation = new PptxReader().Read(path);
+        return Export(presentation, format);
+    }
+
+    /// <summary>
+    /// Reads a presentation from <paramref name="stream"/> and exports it using <paramref name="format"/>.
+    /// </summary>
+    /// <param name="stream">The stream containing the presentation data.</param>
+    /// <param name="format">The desired export format.</param>
+    /// <returns>The exported string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
+    public static string Export(Stream stream, ExportFormat format)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        var presentation = new PptxReader().Read(stream);
+        return Export(presentation, format);
     }
 
     /// <summary>
