@@ -91,69 +91,34 @@ public sealed class XlsxReader : IDocumentReader<WorkbookModel>
             stream.Position = 0;
         }
 
-        using var document = SpreadsheetDocument.Open(stream, false);
-        var workbookPart = document.WorkbookPart ?? throw new InvalidDataException("Workbook part missing.");
-
-        // Check workbook part size
+        SpreadsheetDocument document;
         try
         {
-            using var partStream = workbookPart.GetStream();
-            var partLength = partStream.Length;
-            if (options.MaxPartSize > 0 && partLength > options.MaxPartSize)
-            {
-                throw new DocumentTooLargeException(
-                    $"Workbook part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {partLength} bytes).")
-                {
-                    LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
-                    MaxLimit = options.MaxPartSize,
-                    ActualValue = partLength,
-                    PartName = "Workbook"
-                };
-            }
+            document = SpreadsheetDocument.Open(stream, false);
         }
-        catch (IOException)
+        catch (OpenXmlPackageException ex)
         {
-            // Stream is not accessible, skip size check
+            throw new OfficeForgeFormatException("The document is not a valid Excel document.", ex);
         }
 
-        var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable?
-            .Elements<SharedStringItem>().Select(i => i.InnerText).ToArray() ?? [];
-        var model = new WorkbookModel();
-        foreach (var sheet in workbookPart.Workbook.Descendants<Sheet>())
+        using (document)
         {
-            if (sheet.Id?.Value is not { } relId || sheet.Name?.Value is not { } name) continue;
-            if (workbookPart.GetPartById(relId) is not WorksheetPart worksheetPart) continue;
+            var workbookPart = document.WorkbookPart ?? throw new InvalidDataException("Workbook part missing.");
 
-            // Check worksheet part size
-            if (options.MaxPartSize > 0)
-            {
-                var sheetLength = worksheetPart.GetStream().Length;
-                if (sheetLength > options.MaxPartSize)
-                {
-                    throw new DocumentTooLargeException(
-                        $"Worksheet '{name}' part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {sheetLength} bytes).")
-                    {
-                        LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
-                        MaxLimit = options.MaxPartSize,
-                        ActualValue = sheetLength,
-                        PartName = $"Worksheet '{name}'"
-                    };
-                }
-            }
-
+            // Check workbook part size
             try
             {
-                using var sheetStream = worksheetPart.GetStream();
-                var sheetLength = sheetStream.Length;
-                if (options.MaxPartSize > 0 && sheetLength > options.MaxPartSize)
+                using var partStream = workbookPart.GetStream();
+                var partLength = partStream.Length;
+                if (options.MaxPartSize > 0 && partLength > options.MaxPartSize)
                 {
                     throw new DocumentTooLargeException(
-                        $"Worksheet '{name}' part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {sheetLength} bytes).")
+                        $"Workbook part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {partLength} bytes).")
                     {
                         LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
                         MaxLimit = options.MaxPartSize,
-                        ActualValue = sheetLength,
-                        PartName = $"Worksheet '{name}'"
+                        ActualValue = partLength,
+                        PartName = "Workbook"
                     };
                 }
             }
@@ -162,16 +127,47 @@ public sealed class XlsxReader : IDocumentReader<WorkbookModel>
                 // Stream is not accessible, skip size check
             }
 
-            var sheetModel = model.AddSheet(name);
-            foreach (var cell in worksheetPart.Worksheet.Descendants<Cell>())
+            var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable?
+                .Elements<SharedStringItem>().Select(i => i.InnerText).ToArray() ?? [];
+            var model = new WorkbookModel();
+            foreach (var sheet in workbookPart.Workbook.Descendants<Sheet>())
             {
-                if (cell.CellReference?.Value is not { } reference) continue;
-                if (!CellRef.TryParse(reference, out var cellRef)) continue;
-                var value = ConvertCell(cell, sharedStrings);
-                if (!value.IsEmpty) sheetModel[cellRef] = value;
+                if (sheet.Id?.Value is not { } relId || sheet.Name?.Value is not { } name) continue;
+                if (workbookPart.GetPartById(relId) is not WorksheetPart worksheetPart) continue;
+
+                // Check worksheet part size
+                try
+                {
+                    using var sheetStream = worksheetPart.GetStream();
+                    var sheetLength = sheetStream.Length;
+                    if (options.MaxPartSize > 0 && sheetLength > options.MaxPartSize)
+                    {
+                        throw new DocumentTooLargeException(
+                            $"Worksheet '{name}' part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {sheetLength} bytes).")
+                        {
+                            LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
+                            MaxLimit = options.MaxPartSize,
+                            ActualValue = sheetLength,
+                            PartName = $"Worksheet '{name}'"
+                        };
+                    }
+                }
+                catch (IOException)
+                {
+                    // Stream is not accessible, skip size check
+                }
+
+                var sheetModel = model.AddSheet(name);
+                foreach (var cell in worksheetPart.Worksheet.Descendants<Cell>())
+                {
+                    if (cell.CellReference?.Value is not { } reference) continue;
+                    if (!CellRef.TryParse(reference, out var cellRef)) continue;
+                    var value = ConvertCell(cell, sharedStrings);
+                    if (!value.IsEmpty) sheetModel[cellRef] = value;
+                }
             }
+            return model;
         }
-        return model;
     }
 
     /// <inheritdoc />

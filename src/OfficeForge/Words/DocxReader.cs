@@ -123,65 +123,77 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
             stream.Position = 0;
         }
 
-        using var document = WordprocessingDocument.Open(stream, false);
-        var body = document.MainDocumentPart?.Document.Body ?? throw new InvalidDataException("Document body missing.");
-
-        // Document part size check
-        if (document.MainDocumentPart != null)
+        WordprocessingDocument document;
+        try
         {
-            try
+            document = WordprocessingDocument.Open(stream, false);
+        }
+        catch (OpenXmlPackageException ex)
+        {
+            throw new OfficeForgeFormatException("The document is not a valid Word document.", ex);
+        }
+
+        using (document)
+        {
+            var body = document.MainDocumentPart?.Document.Body ?? throw new InvalidDataException("Document body missing.");
+
+            // Document part size check
+            if (document.MainDocumentPart != null)
             {
-                using var partStream = document.MainDocumentPart.GetStream();
-                var partLength = partStream.Length;
-                if (options.MaxPartSize > 0 && partLength > options.MaxPartSize)
+                try
                 {
-                    throw new DocumentTooLargeException(
-                        $"Document part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {partLength} bytes).")
+                    using var partStream = document.MainDocumentPart.GetStream();
+                    var partLength = partStream.Length;
+                    if (options.MaxPartSize > 0 && partLength > options.MaxPartSize)
                     {
-                        LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
-                        MaxLimit = options.MaxPartSize,
-                        ActualValue = partLength,
-                        PartName = "Document"
-                    };
+                        throw new DocumentTooLargeException(
+                            $"Document part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {partLength} bytes).")
+                        {
+                            LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
+                            MaxLimit = options.MaxPartSize,
+                            ActualValue = partLength,
+                            PartName = "Document"
+                        };
+                    }
+                }
+                catch (IOException)
+                {
+                    // Stream is not accessible, skip size check
                 }
             }
-            catch (IOException)
+
+            var model = new DocumentModel();
+            foreach (var paragraph in body.Descendants<Paragraph>())
             {
-                // Stream is not accessible, skip size check
+                var paragraphModel = new ParagraphModel();
+                var styleId = paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
+                if (styleId is not null && styleId.StartsWith("Heading", StringComparison.OrdinalIgnoreCase))
+                {
+                    paragraphModel.Kind = ParagraphKind.Heading;
+                    if (int.TryParse(styleId.AsSpan("Heading".Length), out var level))
+                        paragraphModel.HeadingLevel = level;
+                }
+
+                foreach (var run in paragraph.Descendants<Run>())
+                {
+                    var text = string.Concat(run.Descendants<Text>().Select(t => t.Text));
+                    if (text.Length == 0) continue;
+
+                    var props = run.RunProperties;
+                    var style = new Models.RunStyle(
+                        Bold: IsOn(props?.Bold),
+                        Italic: IsOn(props?.Italic),
+                        Underline: props?.Underline is { } u && u.Val?.Value != UnderlineValues.None,
+                        FontName: props?.RunFonts?.Ascii?.Value);
+
+                    paragraphModel.Runs.Add(new RunModel(text, style));
+                }
+
+                model.Paragraphs.Add(paragraphModel);
             }
+
+            return model;
         }
-
-        var model = new DocumentModel();
-        foreach (var paragraph in body.Descendants<Paragraph>())
-        {
-            var paragraphModel = new ParagraphModel();
-            var styleId = paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
-            if (styleId is not null && styleId.StartsWith("Heading", StringComparison.OrdinalIgnoreCase))
-            {
-                paragraphModel.Kind = ParagraphKind.Heading;
-                if (int.TryParse(styleId.AsSpan("Heading".Length), out var level))
-                    paragraphModel.HeadingLevel = level;
-            }
-
-            foreach (var run in paragraph.Descendants<Run>())
-            {
-                var text = string.Concat(run.Descendants<Text>().Select(t => t.Text));
-                if (text.Length == 0) continue;
-
-                var props = run.RunProperties;
-                var style = new Models.RunStyle(
-                    Bold: IsOn(props?.Bold),
-                    Italic: IsOn(props?.Italic),
-                    Underline: props?.Underline is { } u && u.Val?.Value != UnderlineValues.None,
-                    FontName: props?.RunFonts?.Ascii?.Value);
-
-                paragraphModel.Runs.Add(new RunModel(text, style));
-            }
-
-            model.Paragraphs.Add(paragraphModel);
-        }
-
-        return model;
     }
 
     /// <inheritdoc />

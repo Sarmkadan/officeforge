@@ -124,69 +124,34 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
             stream.Position = 0;
         }
 
-        using var document = PresentationDocument.Open(stream, false);
-        var presentationPart = document.PresentationPart ?? throw new InvalidDataException("Presentation part missing.");
-
-        // Presentation part size check
+        PresentationDocument document;
         try
         {
-            using var partStream = presentationPart.GetStream();
-            var partLength = partStream.Length;
-            if (options.MaxPartSize > 0 && partLength > options.MaxPartSize)
-            {
-                throw new DocumentTooLargeException(
-                    $"Presentation part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {partLength} bytes).")
-                {
-                    LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
-                    MaxLimit = options.MaxPartSize,
-                    ActualValue = partLength,
-                    PartName = "Presentation"
-                };
-            }
+            document = PresentationDocument.Open(stream, false);
         }
-        catch (IOException)
+        catch (OpenXmlPackageException ex)
         {
-            // Stream is not accessible, skip size check
+            throw new OfficeForgeFormatException("The document is not a valid PowerPoint document.", ex);
         }
 
-        var model = new PresentationModel();
-        var slideIds = presentationPart.Presentation.SlideIdList?.Elements<SlideId>() ?? [];
-
-        foreach (var slideId in slideIds)
+        using (document)
         {
-            if (slideId.RelationshipId?.Value is not { } relId) continue;
-            if (presentationPart.GetPartById(relId) is not SlidePart slidePart) continue;
+            var presentationPart = document.PresentationPart ?? throw new InvalidDataException("Presentation part missing.");
 
-            // Slide part size check
-            if (options.MaxPartSize > 0)
-            {
-                var slideLength = slidePart.GetStream().Length;
-                if (slideLength > options.MaxPartSize)
-                {
-                    throw new DocumentTooLargeException(
-                        $"Slide part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {slideLength} bytes).")
-                    {
-                        LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
-                        MaxLimit = options.MaxPartSize,
-                        ActualValue = slideLength,
-                        PartName = $"Slide {slideId.Id}"
-                    };
-                }
-            }
-
+            // Presentation part size check
             try
             {
-                using var slideStream = slidePart.GetStream();
-                var slideLength = slideStream.Length;
-                if (options.MaxPartSize > 0 && slideLength > options.MaxPartSize)
+                using var partStream = presentationPart.GetStream();
+                var partLength = partStream.Length;
+                if (options.MaxPartSize > 0 && partLength > options.MaxPartSize)
                 {
                     throw new DocumentTooLargeException(
-                        $"Slide part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {slideLength} bytes).")
+                        $"Presentation part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {partLength} bytes).")
                     {
                         LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
                         MaxLimit = options.MaxPartSize,
-                        ActualValue = slideLength,
-                        PartName = $"Slide {slideId.Id}"
+                        ActualValue = partLength,
+                        PartName = "Presentation"
                     };
                 }
             }
@@ -195,32 +160,63 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
                 // Stream is not accessible, skip size check
             }
 
-            var slide = model.AddSlide();
-            foreach (var shape in slidePart.Slide.Descendants<Shape>())
+            var model = new PresentationModel();
+            var slideIds = presentationPart.Presentation.SlideIdList?.Elements<SlideId>() ?? [];
+
+            foreach (var slideId in slideIds)
             {
-                var lines = shape.TextBody?.Descendants<A.Paragraph>()
-                    .Select(p => string.Concat(p.Descendants<A.Text>().Select(t => t.Text)))
-                    .Where(l => l.Length > 0)
-                    .ToList() ?? [];
+                if (slideId.RelationshipId?.Value is not { } relId) continue;
+                if (presentationPart.GetPartById(relId) is not SlidePart slidePart) continue;
 
-                if (lines.Count == 0) continue;
-
-                var placeholder = shape.NonVisualShapeProperties?.ApplicationNonVisualDrawingProperties?
-                    .PlaceholderShape?.Type?.Value;
-
-                if (slide.Title is null && (placeholder == PlaceholderValues.Title || placeholder == PlaceholderValues.CenteredTitle))
+                // Slide part size check
+                try
                 {
-                    slide.Title = string.Join(" ", lines);
-                    continue;
+                    using var slideStream = slidePart.GetStream();
+                    var slideLength = slideStream.Length;
+                    if (options.MaxPartSize > 0 && slideLength > options.MaxPartSize)
+                    {
+                        throw new DocumentTooLargeException(
+                            $"Slide part exceeds maximum size limit of {options.MaxPartSize} bytes (actual: {slideLength} bytes).")
+                        {
+                            LimitType = DocumentTooLargeException.SizeLimitType.MaxPartSize,
+                            MaxLimit = options.MaxPartSize,
+                            ActualValue = slideLength,
+                            PartName = $"Slide {slideId.Id}"
+                        };
+                    }
+                }
+                catch (IOException)
+                {
+                    // Stream is not accessible, skip size check
                 }
 
-                var shapeText = new ShapeTextModel { Name = shape.NonVisualShapeProperties?.NonVisualDrawingProperties?.Name?.Value };
-                shapeText.Lines.AddRange(lines);
-                slide.Shapes.Add(shapeText);
-            }
-        }
+                var slide = model.AddSlide();
+                foreach (var shape in slidePart.Slide.Descendants<Shape>())
+                {
+                    var lines = shape.TextBody?.Descendants<A.Paragraph>()
+                        .Select(p => string.Concat(p.Descendants<A.Text>().Select(t => t.Text)))
+                        .Where(l => l.Length > 0)
+                        .ToList() ?? [];
 
-        return model;
+                    if (lines.Count == 0) continue;
+
+                    var placeholder = shape.NonVisualShapeProperties?.ApplicationNonVisualDrawingProperties?
+                        .PlaceholderShape?.Type?.Value;
+
+                    if (slide.Title is null && (placeholder == PlaceholderValues.Title || placeholder == PlaceholderValues.CenteredTitle))
+                    {
+                        slide.Title = string.Join(" ", lines);
+                        continue;
+                    }
+
+                    var shapeText = new ShapeTextModel { Name = shape.NonVisualShapeProperties?.NonVisualDrawingProperties?.Name?.Value };
+                    shapeText.Lines.AddRange(lines);
+                    slide.Shapes.Add(shapeText);
+                }
+            }
+
+            return model;
+        }
     }
 
     /// <inheritdoc />

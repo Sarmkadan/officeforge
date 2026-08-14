@@ -11,6 +11,7 @@ public interface IDocumentReader<TModel>
     /// <returns>The parsed document model.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="stream"/> is <see langword="null"/></exception>
     /// <exception cref="DocumentTooLargeException">The document exceeds configured size limits</exception>
+    /// <exception cref="OfficeForgeFormatException">The document is not a valid OpenXML package</exception>
     TModel Read(Stream stream);
 
     /// <summary>
@@ -21,6 +22,7 @@ public interface IDocumentReader<TModel>
     /// <returns>The parsed document model.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="stream"/> or <paramref name="options"/> is <see langword="null"/></exception>
     /// <exception cref="DocumentTooLargeException">The document exceeds configured size limits</exception>
+    /// <exception cref="OfficeForgeFormatException">The document is not a valid OpenXML package</exception>
     TModel Read(Stream stream, ReaderOptions options);
 
     /// <summary>
@@ -33,6 +35,7 @@ public interface IDocumentReader<TModel>
     /// <exception cref="FileNotFoundException">The file does not exist</exception>
     /// <exception cref="IOException">The file could not be read</exception>
     /// <exception cref="DocumentTooLargeException">The document exceeds configured size limits</exception>
+    /// <exception cref="OfficeForgeFormatException">The document is not a valid OpenXML package</exception>
     TModel Read(string path);
 
     /// <summary>
@@ -46,6 +49,7 @@ public interface IDocumentReader<TModel>
     /// <exception cref="FileNotFoundException">The file does not exist</exception>
     /// <exception cref="IOException">The file could not be read</exception>
     /// <exception cref="DocumentTooLargeException">The document exceeds configured size limits</exception>
+    /// <exception cref="OfficeForgeFormatException">The document is not a valid OpenXML package</exception>
     TModel Read(string path, ReaderOptions options);
 }
 
