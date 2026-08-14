@@ -1,5 +1,6 @@
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Presentation;
 using OfficeForge.Models;
@@ -7,24 +8,41 @@ using A = DocumentFormat.OpenXml.Drawing;
 
 namespace OfficeForge.Slides;
 
+/// <summary>
+/// Reads a PowerPoint presentation (<c>.pptx</c>) and produces a <see cref="PresentationModel"/>.
+/// </summary>
 public sealed class PptxReader : IDocumentReader<PresentationModel>
 {
-    /// <inheritdoc />
-    public PresentationModel Read(Stream stream)
+    private readonly ReaderOptions _defaultOptions;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="PptxReader"/> using the default <see cref="ReaderOptions"/>.
+    /// </summary>
+    public PptxReader() : this(ReaderOptions.Default) { }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="PptxReader"/> with the specified <paramref name="options"/>.
+    /// </summary>
+    /// <param name="options">The options that control size and entry limits.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <c>null</c>.</exception>
+    public PptxReader(ReaderOptions options)
     {
-        return Read(stream, ReaderOptions.Default);
+        ArgumentNullException.ThrowIfNull(options);
+        _defaultOptions = options;
     }
+
+    /// <inheritdoc />
+    public PresentationModel Read(Stream stream) => Read(stream, _defaultOptions);
 
     /// <inheritdoc />
     public PresentationModel Read(Stream stream, ReaderOptions options)
     {
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(options);
-
         options.Validate();
 
-        // Check stream length before opening as zip
-        if (stream.CanSeek && stream.Length > options.MaxUncompressedSize && options.MaxUncompressedSize > 0)
+        // Check raw stream length before opening as zip (pre‑decompression size)
+        if (stream.CanSeek && options.MaxUncompressedSize > 0 && stream.Length > options.MaxUncompressedSize)
         {
             throw new DocumentTooLargeException(
                 $"Document exceeds maximum uncompressed size limit of {options.MaxUncompressedSize} bytes (actual: {stream.Length} bytes).")
@@ -35,13 +53,13 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
             };
         }
 
-        // Open as zip to check entry count and compression ratio before parsing
+        // Open as zip to enforce entry‑count, compression‑ratio and total decompressed size limits
         if (stream.CanSeek)
         {
             stream.Position = 0;
             using var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read, false);
 
-            // Check entry count
+            // Entry count limit
             if (options.MaxEntryCount > 0 && zipArchive.Entries.Count > options.MaxEntryCount)
             {
                 throw new DocumentTooLargeException(
@@ -53,7 +71,23 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
                 };
             }
 
-            // Check compression ratio by sampling a few entries
+            // Total decompressed size limit
+            if (options.MaxUncompressedSize > 0)
+            {
+                long totalDecompressedSize = zipArchive.Entries.Sum(e => e.Length);
+                if (totalDecompressedSize > options.MaxUncompressedSize)
+                {
+                    throw new DocumentTooLargeException(
+                        $"Document total decompressed size {totalDecompressedSize} bytes exceeds limit of {options.MaxUncompressedSize} bytes.")
+                    {
+                        LimitType = DocumentTooLargeException.SizeLimitType.MaxUncompressedSize,
+                        MaxLimit = options.MaxUncompressedSize,
+                        ActualValue = totalDecompressedSize
+                    };
+                }
+            }
+
+            // Compression ratio limit (sampled)
             if (options.MaxCompressionRatio > 0)
             {
                 long totalCompressedSize = 0;
@@ -64,7 +98,6 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
                 foreach (var entry in zipArchive.Entries)
                 {
                     if (entriesSampled >= maxEntriesToSample) break;
-
                     if (entry.Length <= 0) continue;
 
                     totalCompressedSize += entry.CompressedLength;
@@ -94,7 +127,7 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
         using var document = PresentationDocument.Open(stream, false);
         var presentationPart = document.PresentationPart ?? throw new InvalidDataException("Presentation part missing.");
 
-        // Check presentation part size
+        // Presentation part size check
         try
         {
             using var partStream = presentationPart.GetStream();
@@ -118,12 +151,13 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
 
         var model = new PresentationModel();
         var slideIds = presentationPart.Presentation.SlideIdList?.Elements<SlideId>() ?? [];
+
         foreach (var slideId in slideIds)
         {
             if (slideId.RelationshipId?.Value is not { } relId) continue;
             if (presentationPart.GetPartById(relId) is not SlidePart slidePart) continue;
 
-            // Check slide part size
+            // Slide part size check
             if (options.MaxPartSize > 0)
             {
                 var slideLength = slidePart.GetStream().Length;
@@ -168,19 +202,24 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
                     .Select(p => string.Concat(p.Descendants<A.Text>().Select(t => t.Text)))
                     .Where(l => l.Length > 0)
                     .ToList() ?? [];
+
                 if (lines.Count == 0) continue;
+
                 var placeholder = shape.NonVisualShapeProperties?.ApplicationNonVisualDrawingProperties?
                     .PlaceholderShape?.Type?.Value;
+
                 if (slide.Title is null && (placeholder == PlaceholderValues.Title || placeholder == PlaceholderValues.CenteredTitle))
                 {
                     slide.Title = string.Join(" ", lines);
                     continue;
                 }
+
                 var shapeText = new ShapeTextModel { Name = shape.NonVisualShapeProperties?.NonVisualDrawingProperties?.Name?.Value };
                 shapeText.Lines.AddRange(lines);
                 slide.Shapes.Add(shapeText);
             }
         }
+
         return model;
     }
 
@@ -199,7 +238,6 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(options);
-
         options.Validate();
 
         using var stream = File.OpenRead(path);

@@ -1,29 +1,47 @@
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using OfficeForge.Models;
 
 namespace OfficeForge.Words;
 
+/// <summary>
+/// Reads a Word document (<c>.docx</c>) and produces a <see cref="DocumentModel"/>.
+/// </summary>
 public sealed class DocxReader : IDocumentReader<DocumentModel>
 {
-    /// <inheritdoc />
-    public DocumentModel Read(Stream stream)
+    private readonly ReaderOptions _defaultOptions;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="DocxReader"/> using the default <see cref="ReaderOptions"/>.
+    /// </summary>
+    public DocxReader() : this(ReaderOptions.Default) { }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="DocxReader"/> with the specified <paramref name="options"/>.
+    /// </summary>
+    /// <param name="options">The options that control size and entry limits.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <c>null</c>.</exception>
+    public DocxReader(ReaderOptions options)
     {
-        return Read(stream, ReaderOptions.Default);
+        ArgumentNullException.ThrowIfNull(options);
+        _defaultOptions = options;
     }
+
+    /// <inheritdoc />
+    public DocumentModel Read(Stream stream) => Read(stream, _defaultOptions);
 
     /// <inheritdoc />
     public DocumentModel Read(Stream stream, ReaderOptions options)
     {
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(options);
-
         options.Validate();
 
-        // Check stream length before opening as zip
-        if (stream.CanSeek && stream.Length > options.MaxUncompressedSize && options.MaxUncompressedSize > 0)
+        // Check raw stream length before opening as zip (pre‑decompression size)
+        if (stream.CanSeek && options.MaxUncompressedSize > 0 && stream.Length > options.MaxUncompressedSize)
         {
             throw new DocumentTooLargeException(
                 $"Document exceeds maximum uncompressed size limit of {options.MaxUncompressedSize} bytes (actual: {stream.Length} bytes).")
@@ -34,13 +52,13 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
             };
         }
 
-        // Open as zip to check entry count and compression ratio before parsing
+        // Open as zip to enforce entry‑count, compression‑ratio and total decompressed size limits
         if (stream.CanSeek)
         {
             stream.Position = 0;
             using var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read, false);
 
-            // Check entry count
+            // Entry count limit
             if (options.MaxEntryCount > 0 && zipArchive.Entries.Count > options.MaxEntryCount)
             {
                 throw new DocumentTooLargeException(
@@ -52,7 +70,23 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
                 };
             }
 
-            // Check compression ratio by sampling a few entries
+            // Total decompressed size limit
+            if (options.MaxUncompressedSize > 0)
+            {
+                long totalDecompressedSize = zipArchive.Entries.Sum(e => e.Length);
+                if (totalDecompressedSize > options.MaxUncompressedSize)
+                {
+                    throw new DocumentTooLargeException(
+                        $"Document total decompressed size {totalDecompressedSize} bytes exceeds limit of {options.MaxUncompressedSize} bytes.")
+                    {
+                        LimitType = DocumentTooLargeException.SizeLimitType.MaxUncompressedSize,
+                        MaxLimit = options.MaxUncompressedSize,
+                        ActualValue = totalDecompressedSize
+                    };
+                }
+            }
+
+            // Compression ratio limit (sampled)
             if (options.MaxCompressionRatio > 0)
             {
                 long totalCompressedSize = 0;
@@ -63,7 +97,6 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
                 foreach (var entry in zipArchive.Entries)
                 {
                     if (entriesSampled >= maxEntriesToSample) break;
-
                     if (entry.Length <= 0) continue;
 
                     totalCompressedSize += entry.CompressedLength;
@@ -93,7 +126,7 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
         using var document = WordprocessingDocument.Open(stream, false);
         var body = document.MainDocumentPart?.Document.Body ?? throw new InvalidDataException("Document body missing.");
 
-        // Check document part size
+        // Document part size check
         if (document.MainDocumentPart != null)
         {
             try
@@ -129,20 +162,25 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
                 if (int.TryParse(styleId.AsSpan("Heading".Length), out var level))
                     paragraphModel.HeadingLevel = level;
             }
+
             foreach (var run in paragraph.Descendants<Run>())
             {
                 var text = string.Concat(run.Descendants<Text>().Select(t => t.Text));
                 if (text.Length == 0) continue;
+
                 var props = run.RunProperties;
                 var style = new Models.RunStyle(
                     Bold: IsOn(props?.Bold),
                     Italic: IsOn(props?.Italic),
                     Underline: props?.Underline is { } u && u.Val?.Value != UnderlineValues.None,
                     FontName: props?.RunFonts?.Ascii?.Value);
+
                 paragraphModel.Runs.Add(new RunModel(text, style));
             }
+
             model.Paragraphs.Add(paragraphModel);
         }
+
         return model;
     }
 
@@ -161,7 +199,6 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(options);
-
         options.Validate();
 
         using var stream = File.OpenRead(path);
