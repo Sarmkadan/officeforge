@@ -1,6 +1,6 @@
 namespace OfficeForge.Models;
 
-public sealed class WorkbookModel
+public sealed class WorkbookModel : IWorkbookModel
 {
     public List<SheetModel> Sheets { get; } = [];
 
