@@ -4,7 +4,7 @@ using Xunit;
 
 namespace OfficeForge.Tests;
 
-public class XlsxRoundTripTests : IDisposable
+public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests
 {
     readonly string _dir = Directory.CreateTempSubdirectory("officeforge-tests-").FullName;
 
