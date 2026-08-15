@@ -1,6 +1,6 @@
 namespace OfficeForge.Models;
 
-public sealed class PresentationModel
+public sealed class PresentationModel : IPresentationModel
 {
     public List<SlideModel> Slides { get; } = [];
 
