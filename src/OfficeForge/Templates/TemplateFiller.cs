@@ -4,7 +4,7 @@ using OfficeForge.Models;
 
 namespace OfficeForge.Templates;
 
-public sealed partial class TemplateFiller
+public sealed partial class TemplateFiller : ITemplateFiller
 {
     private readonly IReadOnlyDictionary<string, string> _values;
 
