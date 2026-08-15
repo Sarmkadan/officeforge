@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -49,6 +51,45 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>
         ArgumentException.ThrowIfNullOrEmpty(path);
         using var stream = File.Create(path);
         Write(model, stream);
+    }
+
+    /// <summary>
+    /// Asynchronously writes the workbook model to the provided <paramref name="stream"/>.
+    /// </summary>
+    /// <param name="model">The workbook model to write.</param>
+    /// <param name="stream">The destination stream.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>A task that represents the asynchronous write operation.</returns>
+    public async Task WriteAsync(WorkbookModel model, Stream stream, CancellationToken cancellationToken = default)
+    {
+        // The underlying OpenXML SDK does not provide async APIs, so we offload the synchronous
+        // operation to a background thread to avoid blocking the calling thread.
+        await Task.Run(() => Write(model, stream), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Asynchronously writes the workbook model to a file at the specified <paramref name="path"/>.
+    /// </summary>
+    /// <param name="model">The workbook model to write.</param>
+    /// <param name="path">The file path where the workbook will be saved.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>A task that represents the asynchronous write operation.</returns>
+    public async Task WriteAsync(WorkbookModel model, string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        // Open the file stream with async support.
+        await using var stream = new FileStream(
+            path,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            useAsync: true);
+
+        await WriteAsync(model, stream, cancellationToken).ConfigureAwait(false);
     }
 
     private static Cell CreateCell(CellRef cellRef, Models.CellValue value)
