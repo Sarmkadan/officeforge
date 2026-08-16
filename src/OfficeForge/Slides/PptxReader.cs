@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -11,7 +13,7 @@ namespace OfficeForge.Slides;
 /// <summary>
 /// Reads a PowerPoint presentation (<c>.pptx</c>) and produces a <see cref="PresentationModel"/>.
 /// </summary>
-public sealed class PptxReader : IDocumentReader<PresentationModel>
+public sealed class PptxReader : IDocumentReader<PresentationModel>, IEquatable<PptxReader>
 {
     private readonly ReaderOptions _defaultOptions;
 
@@ -239,4 +241,20 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>
         using var stream = File.OpenRead(path);
         return Read(stream, options);
     }
+
+    // IEquatable implementation
+    public bool Equals(PptxReader? other)
+    {
+        if (ReferenceEquals(null, other)) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return EqualityComparer<ReaderOptions>.Default.Equals(_defaultOptions, other._defaultOptions);
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as PptxReader);
+
+    public override int GetHashCode() => HashCode.Combine(_defaultOptions);
+
+    public static bool operator ==(PptxReader? left, PptxReader? right) => EqualityComparer<PptxReader>.Default.Equals(left, right);
+
+    public static bool operator !=(PptxReader? left, PptxReader? right) => !(left == right);
 }
