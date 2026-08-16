@@ -1,6 +1,7 @@
 using OfficeForge;
 using OfficeForge.Models;
 using Xunit;
+using System;
 
 namespace OfficeForge.Tests;
 
@@ -11,6 +12,22 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
     string TempPath(string name) => Path.Combine(_dir, name);
+
+    // Equality members
+    public bool Equals(XlsxRoundTripTests? other)
+    {
+        if (ReferenceEquals(null, other)) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return _dir == other._dir;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as XlsxRoundTripTests);
+
+    public override int GetHashCode() => HashCode.Combine(_dir);
+
+    public static bool operator ==(XlsxRoundTripTests? left, XlsxRoundTripTests? right) => Equals(left, right);
+
+    public static bool operator !=(XlsxRoundTripTests? left, XlsxRoundTripTests? right) => !Equals(left, right);
 
     [Fact]
     public void WriteRead_PreservesTypedCellValues()
