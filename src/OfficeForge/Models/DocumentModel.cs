@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace OfficeForge.Models;
 
-public sealed class DocumentModel
+public sealed class DocumentModel : IEquatable<DocumentModel>
 {
     public List<ParagraphModel> Paragraphs { get; } = [];
 
@@ -15,6 +19,41 @@ public sealed class DocumentModel
 
     public string ToPlainText() =>
         string.Join(Environment.NewLine, Paragraphs.Select(p => p.Text));
+
+    public bool Equals(DocumentModel? other)
+    {
+        if (ReferenceEquals(this, other))
+            return true;
+        if (other is null)
+            return false;
+        if (Paragraphs.Count != other.Paragraphs.Count)
+            return false;
+        for (int i = 0; i < Paragraphs.Count; i++)
+        {
+            var p1 = Paragraphs[i];
+            var p2 = other.Paragraphs[i];
+            if (p1.Kind != p2.Kind || p1.HeadingLevel != p2.HeadingLevel)
+                return false;
+        }
+        return true;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as DocumentModel);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        foreach (var paragraph in Paragraphs)
+        {
+            hash.Add(paragraph.Kind);
+            hash.Add(paragraph.HeadingLevel);
+        }
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(DocumentModel? left, DocumentModel? right) => Equals(left, right);
+
+    public static bool operator !=(DocumentModel? left, DocumentModel? right) => !Equals(left, right);
 }
 
 public sealed class ParagraphModel
