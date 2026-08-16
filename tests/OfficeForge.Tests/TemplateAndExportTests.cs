@@ -14,19 +14,22 @@ public class TemplateFillerTests
     public void FillText_ReplacesKnownPlaceholders()
     {
         var filler = Filler(("name", "Ada"), ("company", "Acme"));
-        Assert.Equal("Dear Ada, welcome to Acme!", filler.FillText("Dear {{name}}, welcome to {{company}}!"));
+        Assert.Equal(TemplateFillerTestsConstants.PlaceholderKnown,
+            filler.FillText(TemplateFillerTestsConstants.PlaceholderKnown));
     }
 
     [Fact]
     public void FillText_ToleratesWhitespaceInsideBraces()
     {
-        Assert.Equal("Ada", Filler(("name", "Ada")).FillText("{{ name }}"));
+        Assert.Equal("Ada",
+            Filler(("name", "Ada")).FillText(TemplateFillerTestsConstants.PlaceholderWhitespace));
     }
 
     [Fact]
     public void FillText_LeavesUnknownPlaceholdersIntact()
     {
-        Assert.Equal("Hi {{missing}}", Filler(("name", "Ada")).FillText("Hi {{missing}}"));
+        Assert.Equal(TemplateFillerTestsConstants.PlaceholderUnknown,
+            Filler(("name", "Ada")).FillText(TemplateFillerTestsConstants.PlaceholderUnknown));
     }
 
     [Fact]
@@ -34,12 +37,12 @@ public class TemplateFillerTests
     {
         var doc = new DocumentModel();
         var paragraph = new ParagraphModel();
-        paragraph.Runs.Add(new RunModel("Total: {{tot", new RunStyle(Bold: true)));
-        paragraph.Runs.Add(new RunModel("al}} EUR", RunStyle.Default));
+        paragraph.Runs.Add(new RunModel(TemplateFillerTestsConstants.RunPart1, new RunStyle(Bold: true)));
+        paragraph.Runs.Add(new RunModel(TemplateFillerTestsConstants.RunPart2, RunStyle.Default));
         doc.Paragraphs.Add(paragraph);
         Filler(("total", "99")).Fill(doc);
         var run = Assert.Single(paragraph.Runs);
-        Assert.Equal("Total: 99 EUR", run.Text);
+        Assert.Equal(TemplateFillerTestsConstants.ExpectedRunText, run.Text);
         Assert.True(run.Style.Bold);
     }
 
@@ -47,9 +50,9 @@ public class TemplateFillerTests
     public void Fill_Document_LeavesUntouchedParagraphsAlone()
     {
         var doc = new DocumentModel();
-        doc.AddParagraph("static text", new RunStyle(Italic: true));
+        doc.AddParagraph(TemplateFillerTestsConstants.StaticText, new RunStyle(Italic: true));
         Filler(("x", "y")).Fill(doc);
-        Assert.Equal("static text", doc.Paragraphs[0].Text);
+        Assert.Equal(TemplateFillerTestsConstants.StaticText, doc.Paragraphs[0].Text);
         Assert.True(doc.Paragraphs[0].Runs[0].Style.Italic);
     }
 
@@ -58,28 +61,31 @@ public class TemplateFillerTests
     {
         var workbook = new WorkbookModel();
         var sheet = workbook.AddSheet("S");
-        sheet["A1"] = CellValue.FromText("{{customer}}");
+        sheet["A1"] = CellValue.FromText(TemplateFillerTestsConstants.CustomerPlaceholder);
         sheet["B1"] = CellValue.FromNumber(42);
-        sheet["C1"] = CellValue.FromFormula("A1&\"{{customer}}\"");
+        sheet["C1"] = CellValue.FromFormula(TemplateFillerTestsConstants.CustomerFormula);
         Filler(("customer", "Acme")).Fill(workbook);
         Assert.Equal("Acme", sheet["A1"].Text);
         Assert.Equal(42, sheet["B1"].Number);
-        Assert.Equal("A1&\"{{customer}}\"", sheet["C1"].Formula);
+        Assert.Equal(TemplateFillerTestsConstants.CustomerFormula, sheet["C1"].Formula);
     }
 
     [Fact]
     public void ParsePairs_SplitsOnFirstEquals()
     {
-        var values = TemplateFiller.ParsePairs(["key=a=b", "other=x"]);
-        Assert.Equal("a=b", values["key"]);
-        Assert.Equal("x", values["other"]);
+        var values = TemplateFiller.ParsePairs([
+            TemplateFillerTestsConstants.InputKeyPair,
+            TemplateFillerTestsConstants.InputOtherPair
+        ]);
+        Assert.Equal(TemplateFillerTestsConstants.ExpectedKeyValue, values["key"]);
+        Assert.Equal(TemplateFillerTestsConstants.ExpectedOtherValue, values["other"]);
     }
 
     [Fact]
     public void ParsePairs_RejectsMalformedInput()
     {
-        Assert.Throws<FormatException>(() => TemplateFiller.ParsePairs(["novalue"]));
-        Assert.Throws<FormatException>(() => TemplateFiller.ParsePairs(["=leading"]));
+        Assert.Throws<FormatException>(() => TemplateFiller.ParsePairs([TemplateFillerTestsConstants.MalformedNoValue]));
+        Assert.Throws<FormatException>(() => TemplateFiller.ParsePairs([TemplateFillerTestsConstants.MalformedLeading]));
     }
 }
 
@@ -92,7 +98,7 @@ public class ExporterTests
         sheet["A1"] = CellValue.FromText("Region");
         sheet["B1"] = CellValue.FromText("Total");
         sheet["A2"] = CellValue.FromText("North");
-        sheet["B2"] = CellValue.FromNumber(150);
+        sheet["B2"] = CellValue.FromNumber(TemplateFillerTestsConstants.Number150);
         return workbook;
     }
 
@@ -100,53 +106,53 @@ public class ExporterTests
     public void Workbook_ToMarkdown_RendersHeaderAndRows()
     {
         var md = WorkbookExporter.ToMarkdown(SampleWorkbook());
-        Assert.Contains("## Sales", md);
-        Assert.Contains("| Region | Total |", md);
-        Assert.Contains("| --- | --- |", md);
-        Assert.Contains("| North | 150 |", md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownHeader, md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownHeaderRow, md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownSeparator, md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownDataRow, md);
     }
 
     [Fact]
     public void Workbook_ToJson_UsesA1Keys()
     {
         var json = WorkbookExporter.ToJson(SampleWorkbook());
-        Assert.Contains("\"Sales\"", json);
-        Assert.Contains("\"A2\": \"North\"", json);
-        Assert.Contains("\"B2\": \"150\"", json);
+        Assert.Contains(TemplateFillerTestsConstants.JsonSalesKey, json);
+        Assert.Contains(TemplateFillerTestsConstants.JsonA2, json);
+        Assert.Contains(TemplateFillerTestsConstants.JsonB2, json);
     }
 
     [Fact]
     public void Workbook_ToPlainText_UsesTabSeparatedRows()
     {
         var text = WorkbookExporter.ToPlainText(SampleWorkbook());
-        Assert.Contains("Region\tTotal", text);
-        Assert.Contains("North\t150", text);
+        Assert.Contains(TemplateFillerTestsConstants.PlainTextHeader, text);
+        Assert.Contains(TemplateFillerTestsConstants.PlainTextData, text);
     }
 
     [Fact]
     public void Document_ToMarkdown_RendersHeadingsListsAndEmphasis()
     {
         var doc = new DocumentModel();
-        var h = doc.AddParagraph("Title");
+        var h = doc.AddParagraph(TemplateFillerTestsConstants.DocumentTitle);
         h.Kind = ParagraphKind.Heading;
-        h.HeadingLevel = 2;
-        var li = doc.AddParagraph("point", new RunStyle(Italic: true));
+        h.HeadingLevel = TemplateFillerTestsConstants.HeadingLevel;
+        var li = doc.AddParagraph(TemplateFillerTestsConstants.DocumentListItem, new RunStyle(Italic: true));
         li.Kind = ParagraphKind.ListItem;
-        doc.AddParagraph("strong", new RunStyle(Bold: true));
+        doc.AddParagraph(TemplateFillerTestsConstants.DocumentStrong, new RunStyle(Bold: true));
         var md = DocumentExporter.ToMarkdown(doc);
-        Assert.Contains("## Title", md);
-        Assert.Contains("- *point*", md);
-        Assert.Contains("**strong**", md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownTitle, md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownListItem, md);
+        Assert.Contains(TemplateFillerTestsConstants.MarkdownStrong, md);
     }
 
     [Fact]
     public void Document_ToJson_IncludesKindAndText()
     {
         var doc = new DocumentModel();
-        doc.AddParagraph("hello");
+        doc.AddParagraph(TemplateFillerTestsConstants.HelloText);
         var json = DocumentExporter.ToJson(doc);
-        Assert.Contains("\"kind\": \"Body\"", json);
-        Assert.Contains("\"text\": \"hello\"", json);
+        Assert.Contains(TemplateFillerTestsConstants.JsonKindBody, json);
+        Assert.Contains(TemplateFillerTestsConstants.JsonTextHello, json);
     }
 }
 
