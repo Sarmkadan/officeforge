@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -9,7 +10,7 @@ using OfficeForge.Models;
 
 namespace OfficeForge.Spreadsheets;
 
-public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>
+public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>, IEquatable<XlsxWriter>
 {
     /// <inheritdoc />
     public void Write(WorkbookModel model, Stream stream)
@@ -119,4 +120,24 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>
         }
         return cell;
     }
+
+    // Equality members
+
+    public bool Equals(XlsxWriter? other)
+    {
+        // XlsxWriter is stateless; any two instances are considered equal.
+        return other is not null;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as XlsxWriter);
+
+    public override int GetHashCode()
+    {
+        // Since the type has no state, use a constant hash based on the type.
+        return HashCode.Combine(typeof(XlsxWriter));
+    }
+
+    public static bool operator ==(XlsxWriter? left, XlsxWriter? right) => Equals(left, right);
+
+    public static bool operator !=(XlsxWriter? left, XlsxWriter? right) => !Equals(left, right);
 }
