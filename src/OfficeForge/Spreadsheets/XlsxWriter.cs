@@ -63,6 +63,9 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>, IEquatable<Xlsx
     /// <returns>A task that represents the asynchronous write operation.</returns>
     public async Task WriteAsync(WorkbookModel model, Stream stream, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(stream);
+
         // The underlying OpenXML SDK does not provide async APIs, so we offload the synchronous
         // operation to a background thread to avoid blocking the calling thread.
         await Task.Run(() => Write(model, stream), cancellationToken).ConfigureAwait(false);
