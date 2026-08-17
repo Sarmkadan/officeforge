@@ -37,6 +37,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string Export(WorkbookModel workbook, ExportFormat format)
     {
+        ArgumentNullException.ThrowIfNull(workbook);
         ExporterValidation.ValidateModel(workbook, nameof(workbook));
         return format switch
         {
@@ -55,6 +56,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
     public static string Export(string path, ExportFormat format)
     {
+        ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var workbook = new XlsxReader().Read(path);
         return Export(workbook, format);
@@ -82,6 +84,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string ToPlainText(WorkbookModel workbook)
     {
+        ArgumentNullException.ThrowIfNull(workbook);
         ExporterValidation.ValidateModel(workbook, nameof(workbook));
         var sb = new StringBuilder();
         foreach (var sheet in workbook.Sheets)
@@ -101,6 +104,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string ToMarkdown(WorkbookModel workbook)
     {
+        ArgumentNullException.ThrowIfNull(workbook);
         ExporterValidation.ValidateModel(workbook, nameof(workbook));
         var sb = new StringBuilder();
         foreach (var sheet in workbook.Sheets)
@@ -125,6 +129,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="workbook"/> is <c>null</c>.</exception>
     public static string ToJson(WorkbookModel workbook)
     {
+        ArgumentNullException.ThrowIfNull(workbook);
         ExporterValidation.ValidateModel(workbook, nameof(workbook));
         var payload = workbook.Sheets.ToDictionary(
             s => s.Name,
