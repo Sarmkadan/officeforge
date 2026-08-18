@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace OfficeForge.Models;
 
-public sealed class DocumentModel : IEquatable<DocumentModel>
+public sealed class DocumentModel : IEquatable<DocumentModel>, IDocumentModel
 {
     public List<ParagraphModel> Paragraphs { get; } = [];
 
