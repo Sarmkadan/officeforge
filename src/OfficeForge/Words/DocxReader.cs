@@ -10,7 +10,7 @@ namespace OfficeForge.Words;
 /// <summary>
 /// Reads a Word document (<c>.docx</c>) and produces a <see cref="DocumentModel"/>.
 /// </summary>
-public sealed class DocxReader : IDocumentReader<DocumentModel>
+public sealed class DocxReader : IDocumentReader<DocumentModel>, IEquatable<DocxReader>
 {
     private readonly ReaderOptions _defaultOptions;
 
@@ -221,4 +221,21 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>
     // w:val ("0"/"false") can turn it off.
     private static bool IsOn(OnOffType? property) =>
         property is not null && (property.Val is null || property.Val.Value);
+
+    // IEquatable<DocxReader> implementation
+    public bool Equals(DocxReader? other)
+    {
+        if (other is null) return false;
+        return _defaultOptions.Equals(other._defaultOptions);
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as DocxReader);
+
+    public override int GetHashCode() => _defaultOptions?.GetHashCode() ?? 0;
+
+    public static bool operator ==(DocxReader? left, DocxReader? right) =>
+        EqualityComparer<DocxReader>.Default.Equals(left, right);
+
+    public static bool operator !=(DocxReader? left, DocxReader? right) =>
+        !(left == right);
 }
