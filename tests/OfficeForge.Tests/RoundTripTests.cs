@@ -7,7 +7,7 @@ namespace OfficeForge.Tests;
 
 public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<XlsxRoundTripTests>
 {
-    readonly string _dir = Directory.CreateTempSubdirectory("officeforge-tests-").FullName;
+    readonly string _dir = Directory.CreateTempSubdirectory(XlsxRoundTripTestsConstants.TempDirectoryPrefix).FullName;
 
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
@@ -34,7 +34,7 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     {
         var workbook = new WorkbookModel();
         var sheet = workbook.AddSheet("Data");
-        sheet["A1"] = CellValue.FromText("Revenue");
+        sheet["A1"] = CellValue.FromText(XlsxRoundTripTestsConstants.SampleRevenueText);
         sheet["B1"] = CellValue.FromNumber(1234.5);
         sheet["C1"] = CellValue.FromBoolean(true);
         sheet["D1"] = CellValue.FromDateTime(new DateTime(2026, 3, 15, 10, 30, 0));
@@ -45,7 +45,7 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
         var data = Assert.Single(loaded.Sheets);
         Assert.Equal("Data", data.Name);
         Assert.Equal(CellValueKind.Text, data["A1"].Kind);
-        Assert.Equal("Revenue", data["A1"].Text);
+        Assert.Equal(XlsxRoundTripTestsConstants.SampleRevenueText, data["A1"].Text);
         Assert.Equal(1234.5, data["B1"].Number);
         Assert.True(data["C1"].Boolean);
         Assert.Equal(new DateTime(2026, 3, 15, 10, 30, 0), data["D1"].DateTime);
@@ -82,13 +82,13 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     {
         var workbook = new WorkbookModel();
         var sheet = workbook.AddSheet("Report");
-        sheet["A1"] = CellValue.FromText("Revenue");
+        sheet["A1"] = CellValue.FromText(XlsxRoundTripTestsConstants.SampleRevenueText);
         sheet["B1"] = CellValue.FromNumber(42500.75);
         var path = TempPath("report.xlsx");
         OfficeDocument.SaveWorkbook(workbook, path);
         var markdown = OfficeDocument.Export(path, Export.ExportFormat.Markdown);
         Assert.Contains("## Report", markdown);
-        Assert.Contains("| Revenue | 42500.75 |", markdown);
+        Assert.Contains($"| {XlsxRoundTripTestsConstants.SampleRevenueText} | 42500.75 |", markdown);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
 
 public class DocxRoundTripTests : IDisposable
 {
-    readonly string _dir = Directory.CreateTempSubdirectory("officeforge-tests-").FullName;
+    readonly string _dir = Directory.CreateTempSubdirectory(XlsxRoundTripTestsConstants.TempDirectoryPrefix).FullName;
 
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
