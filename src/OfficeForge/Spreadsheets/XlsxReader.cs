@@ -4,10 +4,11 @@ using System.IO.Compression;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using OfficeForge.Models;
+using System.Collections.Generic;
 
 namespace OfficeForge.Spreadsheets;
 
-public sealed class XlsxReader : IDocumentReader<WorkbookModel>
+public sealed class XlsxReader : IDocumentReader<WorkbookModel>, IEquatable<XlsxReader>
 {
     /// <inheritdoc />
     public WorkbookModel Read(Stream stream)
@@ -214,4 +215,19 @@ public sealed class XlsxReader : IDocumentReader<WorkbookModel>
             ? Models.CellValue.FromNumber(number)
             : Models.CellValue.FromText(raw ?? string.Empty);
     }
+
+    // IEquatable<XlsxReader> implementation
+    public bool Equals(XlsxReader? other)
+    {
+        // XlsxReader has no instance state; all instances are considered equal.
+        return other is not null;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as XlsxReader);
+
+    public override int GetHashCode() => HashCode.Combine(typeof(XlsxReader));
+
+    public static bool operator ==(XlsxReader? left, XlsxReader? right) => EqualityComparer<XlsxReader>.Default.Equals(left, right);
+
+    public static bool operator !=(XlsxReader? left, XlsxReader? right) => !(left == right);
 }
