@@ -1,3 +1,4 @@
+using System;
 using OfficeForge.Export;
 using OfficeForge.Models;
 using OfficeForge.Templates;
@@ -166,6 +167,7 @@ public class CellRefTests
     [InlineData("AZ5", 5, 52)]
     public void Parse_ResolvesRowAndColumn(string a1, int row, int column)
     {
+        ArgumentException.ThrowIfNullOrEmpty(a1);
         var cell = CellRef.Parse(a1);
         Assert.Equal(row, cell.Row);
         Assert.Equal(column, cell.Column);
@@ -177,6 +179,7 @@ public class CellRefTests
     [InlineData("ZZ1000")]
     public void ToA1_RoundTripsThroughParse(string a1)
     {
+        ArgumentException.ThrowIfNullOrEmpty(a1);
         Assert.Equal(a1, CellRef.Parse(a1).ToA1());
     }
 
@@ -187,6 +190,7 @@ public class CellRefTests
     [InlineData("42")]
     public void TryParse_RejectsInvalidReferences(string input)
     {
+        ArgumentException.ThrowIfNullOrEmpty(input);
         Assert.False(CellRef.TryParse(input, out _));
     }
 }
