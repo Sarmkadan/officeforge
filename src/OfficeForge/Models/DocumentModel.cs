@@ -20,6 +20,12 @@ public sealed class DocumentModel : IEquatable<DocumentModel>, IDocumentModel
     public string ToPlainText() =>
         string.Join(Environment.NewLine, Paragraphs.Select(p => p.Text));
 
+    public override string ToString()
+    {
+        var paragraphs = string.Join(", ", Paragraphs.Select(p => $"{p.Kind} (heading level {p.HeadingLevel})"));
+        return $"DocumentModel {{ Paragraphs = [{paragraphs}] }}";
+    }
+
     public bool Equals(DocumentModel? other)
     {
         if (ReferenceEquals(this, other))
