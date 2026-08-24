@@ -2,6 +2,19 @@ namespace OfficeForge.Models;
 
 public sealed class PresentationModel : IPresentationModel, IEquatable<PresentationModel>
 {
+    public string? Title { get; set; }
+    public string? Name { get; set; }
+    public List<SlideModel> Slides { get; set; } = [];
+
+    public SlideModel AddSlide(string? title = null)
+    {
+        var slide = new SlideModel { Title = title };
+        Slides.Add(slide);
+        return slide;
+    }
+
+    public override string ToString() => $"PresentationModel {{ Title = {Title}, Name = {Name} }}";
+
     public bool Equals(PresentationModel? other)
     {
         return other != null &&
@@ -18,14 +31,6 @@ public sealed class PresentationModel : IPresentationModel, IEquatable<Presentat
     public static bool operator ==(PresentationModel? left, PresentationModel? right) => EqualityComparer<PresentationModel>.Default.Equals(left, right);
 
     public static bool operator !=(PresentationModel? left, PresentationModel? right) => !(left == right);
-    public List<SlideModel> Slides { get; } = [];
-
-    public SlideModel AddSlide(string? title = null)
-    {
-        var slide = new SlideModel { Title = title };
-        Slides.Add(slide);
-        return slide;
-    }
 }
 
 public sealed class SlideModel
