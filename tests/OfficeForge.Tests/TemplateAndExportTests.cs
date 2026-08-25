@@ -6,11 +6,24 @@ using Xunit;
 
 namespace OfficeForge.Tests;
 
+/// <summary>
+/// Unit tests for <see cref="TemplateFiller"/> covering placeholder replacement in plain text,
+/// documents and workbooks, plus parsing of key/value pairs.
+/// </summary>
 public class TemplateFillerTests
 {
+    /// <summary>
+    /// Creates a <see cref="TemplateFiller"/> from the supplied key/value pairs.
+    /// </summary>
+    /// <param name="pairs">Placeholder keys paired with the replacement values they map to.</param>
+    /// <returns>A filler whose lookup table maps each key to its corresponding value.</returns>
     static TemplateFiller Filler(params (string Key, string Value)[] pairs) =>
         new(pairs.ToDictionary(p => p.Key, p => p.Value));
 
+    /// <summary>
+    /// Verifies that <see cref="TemplateFiller.FillText"/> replaces known "{name}" and "{company}"
+    /// placeholders with their configured values.
+    /// </summary>
     [Fact]
     public void FillText_ReplacesKnownPlaceholders()
     {
@@ -19,6 +32,10 @@ public class TemplateFillerTests
             filler.FillText(TemplateFillerTestsConstants.PlaceholderKnown));
     }
 
+    /// <summary>
+    /// Verifies that whitespace inside the braces of a placeholder, e.g. "{ name }",
+    /// is tolerated and the placeholder still resolves to its configured value.
+    /// </summary>
     [Fact]
     public void FillText_ToleratesWhitespaceInsideBraces()
     {
@@ -26,6 +43,9 @@ public class TemplateFillerTests
             Filler(("name", "Ada")).FillText(TemplateFillerTestsConstants.PlaceholderWhitespace));
     }
 
+    /// <summary>
+    /// Verifies that placeholders without a matching entry are left completely intact.
+    /// </summary>
     [Fact]
     public void FillText_LeavesUnknownPlaceholdersIntact()
     {
@@ -33,6 +53,10 @@ public class TemplateFillerTests
             Filler(("name", "Ada")).FillText(TemplateFillerTestsConstants.PlaceholderUnknown));
     }
 
+    /// <summary>
+    /// Verifies that filling a document replaces a placeholder split across multiple runs,
+    /// merging them into a single run that keeps the style of the first run.
+    /// </summary>
     [Fact]
     public void Fill_Document_ReplacesAcrossRunsKeepingFirstStyle()
     {
@@ -47,6 +71,9 @@ public class TemplateFillerTests
         Assert.True(run.Style.Bold);
     }
 
+    /// <summary>
+    /// Verifies that paragraphs containing no placeholders keep their original text and style when a document is filled.
+    /// </summary>
     [Fact]
     public void Fill_Document_LeavesUntouchedParagraphsAlone()
     {
@@ -57,6 +84,10 @@ public class TemplateFillerTests
         Assert.True(doc.Paragraphs[0].Runs[0].Style.Italic);
     }
 
+    /// <summary>
+    /// Verifies that filling a workbook replaces placeholders in text cells only,
+    /// leaving numeric and formula cells untouched.
+    /// </summary>
     [Fact]
     public void Fill_Workbook_ReplacesOnlyTextCells()
     {
@@ -71,6 +102,10 @@ public class TemplateFillerTests
         Assert.Equal(TemplateFillerTestsConstants.CustomerFormula, sheet["C1"].Formula);
     }
 
+    /// <summary>
+    /// Verifies that <see cref="TemplateFiller.ParsePairs"/> splits each entry on the first '=',
+    /// so values may contain additional '=' characters.
+    /// </summary>
     [Fact]
     public void ParsePairs_SplitsOnFirstEquals()
     {
@@ -82,6 +117,9 @@ public class TemplateFillerTests
         Assert.Equal(TemplateFillerTestsConstants.ExpectedOtherValue, values["other"]);
     }
 
+    /// <summary>
+    /// Verifies that entries lacking a value or a key are rejected with a <see cref="FormatException"/>.
+    /// </summary>
     [Fact]
     public void ParsePairs_RejectsMalformedInput()
     {
@@ -90,8 +128,15 @@ public class TemplateFillerTests
     }
 }
 
+/// <summary>
+/// Unit tests for the workbook and document exporters, verifying Markdown, JSON and plain-text output.
+/// </summary>
 public class ExporterTests
 {
+    /// <summary>
+    /// Builds a small sales workbook with a header row and a single data row.
+    /// </summary>
+    /// <returns>A workbook with sheet "Sales" containing Region/Total headers and one North/150 data row.</returns>
     static WorkbookModel SampleWorkbook()
     {
         var workbook = new WorkbookModel();
@@ -103,6 +148,9 @@ public class ExporterTests
         return workbook;
     }
 
+    /// <summary>
+    /// Verifies that Markdown export renders the header row, the column separator line and the data rows.
+    /// </summary>
     [Fact]
     public void Workbook_ToMarkdown_RendersHeaderAndRows()
     {
@@ -113,6 +161,9 @@ public class ExporterTests
         Assert.Contains(TemplateFillerTestsConstants.MarkdownDataRow, md);
     }
 
+    /// <summary>
+    /// Verifies that JSON export nests cells under the sheet name and keys them by A1-style references.
+    /// </summary>
     [Fact]
     public void Workbook_ToJson_UsesA1Keys()
     {
@@ -122,6 +173,9 @@ public class ExporterTests
         Assert.Contains(TemplateFillerTestsConstants.JsonB2, json);
     }
 
+    /// <summary>
+    /// Verifies that plain-text export writes tab-separated header and data rows.
+    /// </summary>
     [Fact]
     public void Workbook_ToPlainText_UsesTabSeparatedRows()
     {
@@ -130,6 +184,10 @@ public class ExporterTests
         Assert.Contains(TemplateFillerTestsConstants.PlainTextData, text);
     }
 
+    /// <summary>
+    /// Verifies that Markdown export renders headings with hash prefixes, list items with bullets
+    /// and bold/italic runs wrapped in emphasis markers.
+    /// </summary>
     [Fact]
     public void Document_ToMarkdown_RendersHeadingsListsAndEmphasis()
     {
@@ -146,6 +204,9 @@ public class ExporterTests
         Assert.Contains(TemplateFillerTestsConstants.MarkdownStrong, md);
     }
 
+    /// <summary>
+    /// Verifies that JSON export includes each paragraph's kind and text properties.
+    /// </summary>
     [Fact]
     public void Document_ToJson_IncludesKindAndText()
     {
@@ -157,8 +218,17 @@ public class ExporterTests
     }
 }
 
+/// <summary>
+/// Unit tests for parsing and formatting A1-style cell references with <see cref="CellRef"/>.
+/// </summary>
 public class CellRefTests
 {
+    /// <summary>
+    /// Verifies that valid A1-style references parse into the expected 1-based row and column numbers.
+    /// </summary>
+    /// <param name="a1">The A1-style reference to parse.</param>
+    /// <param name="row">The expected 1-based row number.</param>
+    /// <param name="column">The expected 1-based column number.</param>
     [Theory]
     [InlineData("A1", 1, 1)]
     [InlineData("b3", 3, 2)]
@@ -173,6 +243,10 @@ public class CellRefTests
         Assert.Equal(column, cell.Column);
     }
 
+    /// <summary>
+    /// Verifies that parsing an A1-style reference and converting it back produces the original string.
+    /// </summary>
+    /// <param name="a1">The A1-style reference to round-trip.</param>
     [Theory]
     [InlineData("A1")]
     [InlineData("AA99")]
@@ -183,6 +257,10 @@ public class CellRefTests
         Assert.Equal(a1, CellRef.Parse(a1).ToA1());
     }
 
+    /// <summary>
+    /// Verifies that malformed references, such as digits before letters, a zero row or a missing row number, fail to parse.
+    /// </summary>
+    /// <param name="input">The invalid cell reference candidate.</param>
     [Theory]
     [InlineData("1A")]
     [InlineData("A0")]
