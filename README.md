@@ -51,6 +51,25 @@ officeforge convert report.xlsx --format markdown
 | Templates | `{{key}}` placeholder fill in .docx and .xlsx |
 | Export | text, markdown, json from any supported format |
 
+## XlsxRoundTripTests
+
+`XlsxRoundTripTests` ([tests/OfficeForge.Tests/RoundTripTests.cs](tests/OfficeForge.Tests/RoundTripTests.cs)) is the round-trip test fixture for the Excel pipeline: it writes a workbook with the OfficeForge writers, loads it back with the readers and asserts nothing was lost along the way. It verifies that typed cell values (text, numbers, booleans, dates), multiple sheets and the default sheet of an empty workbook all survive a save/load cycle, that exporting a saved `.xlsx` path produces a markdown table, and that reading a missing cell yields an empty value. The fixture holds temporary files, so it implements `IDisposable` and should be disposed when done.
+
+Usage:
+
+```csharp
+using OfficeForge.Tests;
+
+// Run the xlsx round-trip checks against real files on disk
+using var roundTrip = new XlsxRoundTripTests();
+
+roundTrip.WriteRead_PreservesTypedCellValues();        // text/number/bool/date cells survive save + load
+roundTrip.WriteRead_PreservesMultipleSheets();         // every sheet is written back and re-read intact
+roundTrip.WriteRead_EmptyWorkbookGetsDefaultSheet();   // an empty workbook still round-trips with one sheet
+roundTrip.Export_FromXlsxPath_ProducesMarkdownTable(); // Export(path, ExportFormat.Markdown) renders a table
+roundTrip.MissingCell_ReadsAsEmpty();                  // absent cells read back as empty CellValue
+```
+
 ## Architecture
 
 Readers map each format to a plain in-memory model (`WorkbookModel`, `DocumentModel`, `PresentationModel`); writers, exporters and the template filler operate on those models - the OpenXML SDK never leaks into the public API. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module breakdown, design decisions and known limitations.
