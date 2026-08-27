@@ -5,15 +5,26 @@ using System;
 
 namespace OfficeForge.Tests;
 
+/// <summary>
+/// Provides round-trip tests for Excel (.xlsx) files, ensuring that writing and reading preserves workbook content including cell values, formulas, multiple sheets, and default sheet behavior.
+/// </summary>
 public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<XlsxRoundTripTests>
 {
     readonly string _dir = Directory.CreateTempSubdirectory(XlsxRoundTripTestsConstants.TempDirectoryPrefix).FullName;
 
+    /// <summary>
+    /// Releases the temporary directory used for test files.
+    /// </summary>
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
     string TempPath(string name) => Path.Combine(_dir, name);
 
     // Equality members
+    /// <summary>
+    /// Indicates whether the current object is equal to another object of the same type.
+    /// </summary>
+    /// <param name="other">An object to compare with this object.</param>
+    /// <returns>true if the current object is equal to the <paramref name="other">parameter</paramref>; otherwise, false.</returns>
     public bool Equals(XlsxRoundTripTests? other)
     {
         if (ReferenceEquals(null, other)) return false;
@@ -21,15 +32,39 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
         return _dir == other._dir;
     }
 
+    /// <summary>
+    /// Indicates whether the current object is equal to a specified object.
+    /// </summary>
+    /// <param name="obj">The object to compare with the current object.</param>
+    /// <returns>true if the specified object  is equal to the current object; otherwise, false.</returns>
     public override bool Equals(object? obj) => Equals(obj as XlsxRoundTripTests);
 
+    /// <summary>
+    /// Serves as the default hash function.
+    /// </summary>
+    /// <returns>A hash code for the current object.</returns>
     public override int GetHashCode() => HashCode.Combine(_dir);
 
+    /// <summary>
+    /// Determines whether two specified objects are equal.
+    /// </summary>
+    /// <param name="left">The first object to compare.</param>
+    /// <param name="right">The second object to compare.</param>
+    /// <returns>true if the values of <paramref name="left"/> and <paramref name="right"/> are equal; otherwise, false.</returns>
     public static bool operator ==(XlsxRoundTripTests? left, XlsxRoundTripTests? right) => Equals(left, right);
 
+    /// <summary>
+    /// Determines whether two specified objects are not equal.
+    /// </summary>
+    /// <param name="left">The first object to compare.</param>
+    /// <param name="right">The second object to compare.</param>
+    /// <returns>true if the values of <paramref name="left"/> and <paramref name="right"/> are not equal; otherwise, false.</returns>
     public static bool operator !=(XlsxRoundTripTests? left, XlsxRoundTripTests? right) => !Equals(left, right);
 
     [Fact]
+    /// <summary>
+    /// Verifies that typed cell values (text, number, boolean, date/time, formula) are preserved when saving and reloading a workbook.
+    /// </summary>
     public void WriteRead_PreservesTypedCellValues()
     {
         var workbook = new WorkbookModel();
@@ -54,6 +89,9 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     }
 
     [Fact]
+    /// <summary>
+    /// Verifies that multiple worksheets are preserved when saving and reloading a workbook.
+    /// </summary>
     public void WriteRead_PreservesMultipleSheets()
     {
         var workbook = new WorkbookModel();
@@ -67,6 +105,9 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     }
 
     [Fact]
+    /// <summary>
+    /// Verifies that an empty workbook gets a default worksheet named "Sheet1" when saved and reloaded.
+    /// </summary>
     public void WriteRead_EmptyWorkbookGetsDefaultSheet()
     {
         var path = TempPath("empty.xlsx");
@@ -78,6 +119,9 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     }
 
     [Fact]
+    /// <summary>
+    /// Verifies that exporting an Excel workbook to Markdown produces a table containing the expected text and numeric values.
+    /// </summary>
     public void Export_FromXlsxPath_ProducesMarkdownTable()
     {
         var workbook = new WorkbookModel();
@@ -92,6 +136,9 @@ public class XlsxRoundTripTests : IDisposable, IXlsxRoundTripTests, IEquatable<X
     }
 
     [Fact]
+    /// <summary>
+    /// Verifies that reading a cell that does not exist returns an empty cell value.
+    /// </summary>
     public void MissingCell_ReadsAsEmpty()
     {
         var sheet = new WorkbookModel().AddSheet("S");
