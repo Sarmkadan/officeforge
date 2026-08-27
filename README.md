@@ -70,6 +70,43 @@ roundTrip.Export_FromXlsxPath_ProducesMarkdownTable(); // Export(path, ExportFor
 roundTrip.MissingCell_ReadsAsEmpty();                  // absent cells read back as empty CellValue
 ```
 
+## TemplateFillerTests
+
+`TemplateFillerTests` (tests/OfficeForge.Tests/TemplateAndExportTests.cs) tests the template filling functionality for plain text, Word documents, and Excel workbooks, including placeholder replacement, parsing of key-value pairs, and export to various formats. It verifies that known placeholders are replaced, whitespace inside braces is tolerated, unknown placeholders are left intact, document and workbook filling preserves styles and untouched content, and that parsing handles malformed input correctly.
+
+Usage:
+
+```csharp
+using OfficeForge.Templates;
+using OfficeForge.Models;
+using System.Collections.Generic;
+
+// Example 1: Replace placeholders in plain text
+var filler = new TemplateFiller(new Dictionary<string, string>
+{
+    { "name", "Ada" },
+    { "company", "Acme" }
+});
+string filledText = filler.FillText("Hello {{name}} from {{company}}!");
+// filledText is "Hello Ada from Acme!"
+
+// Example 2: Fill a Word document (preserving styles and untouched paragraphs)
+var document = new DocumentModel();
+document.AddParagraph("Total: {{total}} EUR", new RunStyle { Bold = true });
+document.AddParagraph("This paragraph has no placeholders and should remain unchanged.");
+filler.Fill(document);
+// The first paragraph now reads "Total: 99 EUR" and keeps its bold style.
+// The second paragraph is unchanged.
+
+// Example 3: Parse key-value pairs (used internally by TemplateFiller)
+var pairs = TemplateFiller.ParsePairs(new[]
+{
+    "key=a=b",
+    "other=x"
+});
+// pairs["key"] is "a=b", pairs["other"] is "x"
+```
+
 ## Architecture
 
 Readers map each format to a plain in-memory model (`WorkbookModel`, `DocumentModel`, `PresentationModel`); writers, exporters and the template filler operate on those models - the OpenXML SDK never leaks into the public API. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module breakdown, design decisions and known limitations.
