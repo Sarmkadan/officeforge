@@ -4,12 +4,16 @@ public sealed class WorkbookModel : IWorkbookModel
 {
     public List<SheetModel> Sheets { get; } = [];
 
-    public SheetModel? FindSheet(string name) =>
-        Sheets.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+    public SheetModel? FindSheet(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name, nameof(name));
+
+        return Sheets.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
 
     public SheetModel AddSheet(string name)
     {
-        ArgumentException.ThrowIfNullOrEmpty(name, nameof(name));
+        ArgumentNullException.ThrowIfNull(name, nameof(name));
 
         var existingSheet = FindSheet(name);
         if (existingSheet is not null)
