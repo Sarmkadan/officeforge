@@ -12,6 +12,9 @@ namespace OfficeForge.Models;
 /// </remarks>
 public sealed class SheetModel(string name)
 {
+    private const int MaxNameLength = 31;
+    private static readonly char[] ForbiddenNameChars = [':', '\\', '/', '?', '*', '[', ']'];
+
     private string _name = ValidateSheetName(name);
 
     public string Name
@@ -54,14 +57,14 @@ public sealed class SheetModel(string name)
 
     private static void ValidateCellReference(CellRef cellRef)
     {
-        if (cellRef.Row < 1 || cellRef.Row > 1048576)
+        if (cellRef.Row < 1 || cellRef.Row > CellRef.MaxRows)
         {
-            throw new ArgumentException("Row number is out of range (1-1048576).", nameof(cellRef));
+            throw new ArgumentException($"Row number is out of range (1-{CellRef.MaxRows}).", nameof(cellRef));
         }
 
-        if (cellRef.Column < 1 || cellRef.Column > 16384)
+        if (cellRef.Column < 1 || cellRef.Column > CellRef.MaxColumns)
         {
-            throw new ArgumentException("Column number is out of range (1-16384).", nameof(cellRef));
+            throw new ArgumentException($"Column number is out of range (1-{CellRef.MaxColumns}).", nameof(cellRef));
         }
     }
 
@@ -89,16 +92,15 @@ public sealed class SheetModel(string name)
                 nameof(name));
         }
 
-        if (name.Length > 31)
+        if (name.Length > MaxNameLength)
         {
             throw new ArgumentException(
-                "Sheet name cannot exceed 31 characters.",
+                $"Sheet name cannot exceed {MaxNameLength} characters.",
                 nameof(name));
         }
 
         // Check for forbidden characters: : \ / ? * [ ]
-        var forbiddenChars = new[] { ':', '\\', '/', '?', '*', '[', ']' };
-        if (name.IndexOfAny(forbiddenChars) >= 0)
+        if (name.IndexOfAny(ForbiddenNameChars) >= 0)
         {
             throw new ArgumentException(
                 "Sheet name cannot contain any of the following characters: : \\ / ? * [ ]",
