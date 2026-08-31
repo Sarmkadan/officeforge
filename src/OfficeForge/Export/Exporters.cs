@@ -39,12 +39,7 @@ public static class WorkbookExporter
     {
         ArgumentNullException.ThrowIfNull(workbook);
         ExporterValidation.ValidateModel(workbook, nameof(workbook));
-        return format switch
-        {
-            ExportFormat.Markdown => ToMarkdown(workbook),
-            ExportFormat.Json => ToJson(workbook),
-            _ => ToPlainText(workbook)
-        };
+        return Exporter.Export(workbook, format, ToPlainText, ToMarkdown, ToJson);
     }
 
     /// <summary>
@@ -56,10 +51,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
     public static string Export(string path, ExportFormat format)
     {
-        ArgumentException.ThrowIfNullOrEmpty(path);
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var workbook = new XlsxReader().Read(path);
-        return Export(workbook, format);
+        return Exporter.Export(path, format, new XlsxReader(), Export);
     }
 
     /// <summary>
@@ -71,9 +63,7 @@ public static class WorkbookExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
     public static string Export(Stream stream, ExportFormat format)
     {
-        ArgumentNullException.ThrowIfNull(stream);
-        var workbook = new XlsxReader().Read(stream);
-        return Export(workbook, format);
+        return Exporter.Export(stream, format, new XlsxReader(), Export);
     }
 
     /// <summary>
@@ -170,12 +160,7 @@ public static class DocumentExporter
     public static string Export(DocumentModel document, ExportFormat format)
     {
         ExporterValidation.ValidateModel(document, nameof(document));
-        return format switch
-        {
-            ExportFormat.Markdown => ToMarkdown(document),
-            ExportFormat.Json => ToJson(document),
-            _ => document.ToPlainText()
-        };
+        return Exporter.Export(document, format, static model => model.ToPlainText(), ToMarkdown, ToJson);
     }
 
     /// <summary>
@@ -187,9 +172,7 @@ public static class DocumentExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
     public static string Export(string path, ExportFormat format)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var document = new DocxReader().Read(path);
-        return Export(document, format);
+        return Exporter.Export(path, format, new DocxReader(), Export);
     }
 
     /// <summary>
@@ -201,9 +184,7 @@ public static class DocumentExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
     public static string Export(Stream stream, ExportFormat format)
     {
-        ArgumentNullException.ThrowIfNull(stream);
-        var document = new DocxReader().Read(stream);
-        return Export(document, format);
+        return Exporter.Export(stream, format, new DocxReader(), Export);
     }
 
     /// <summary>
@@ -272,12 +253,7 @@ public static class PresentationExporter
     public static string Export(PresentationModel presentation, ExportFormat format)
     {
         ExporterValidation.ValidateModel(presentation, nameof(presentation));
-        return format switch
-        {
-            ExportFormat.Markdown => ToMarkdown(presentation),
-            ExportFormat.Json => ToJson(presentation),
-            _ => ToPlainText(presentation)
-        };
+        return Exporter.Export(presentation, format, ToPlainText, ToMarkdown, ToJson);
     }
 
     /// <summary>
@@ -289,9 +265,7 @@ public static class PresentationExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is <c>null</c>.</exception>
     public static string Export(string path, ExportFormat format)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var presentation = new PptxReader().Read(path);
-        return Export(presentation, format);
+        return Exporter.Export(path, format, new PptxReader(), Export);
     }
 
     /// <summary>
@@ -303,9 +277,7 @@ public static class PresentationExporter
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <c>null</c>.</exception>
     public static string Export(Stream stream, ExportFormat format)
     {
-        ArgumentNullException.ThrowIfNull(stream);
-        var presentation = new PptxReader().Read(stream);
-        return Export(presentation, format);
+        return Exporter.Export(stream, format, new PptxReader(), Export);
     }
 
     /// <summary>
@@ -358,6 +330,41 @@ public static class PresentationExporter
             shapes = s.Shapes.Select(sh => new { name = sh.Name, lines = sh.Lines })
         });
         return JsonSerializer.Serialize(payload, JsonOptions.Indented);
+    }
+}
+
+internal static class Exporter
+{
+    public static string Export<TModel>(
+        TModel model,
+        ExportFormat format,
+        Func<TModel, string> text,
+        Func<TModel, string> markdown,
+        Func<TModel, string> json) => format switch
+        {
+            ExportFormat.Markdown => markdown(model),
+            ExportFormat.Json => json(model),
+            _ => text(model)
+        };
+
+    public static string Export<TModel>(
+        string path,
+        ExportFormat format,
+        IDocumentReader<TModel> reader,
+        Func<TModel, ExportFormat, string> export)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return export(reader.Read(path), format);
+    }
+
+    public static string Export<TModel>(
+        Stream stream,
+        ExportFormat format,
+        IDocumentReader<TModel> reader,
+        Func<TModel, ExportFormat, string> export)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        return export(reader.Read(stream), format);
     }
 }
 
