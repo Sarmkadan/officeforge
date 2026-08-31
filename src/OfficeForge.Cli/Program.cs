@@ -36,6 +36,30 @@ readCell.SetHandler((FileInfo file, string cell, string? sheetName, bool verbose
 }, fileArg, cellArg, sheetOption, verboseOption);
 root.AddCommand(readCell);
 
+var listSheets = new Command("list-sheets", "List worksheets and their used ranges in an .xlsx workbook");
+listSheets.AddArgument(fileArg);
+listSheets.SetHandler((FileInfo file, bool verbose) =>
+{
+    var stopwatch = Stopwatch.StartNew();
+    try
+    {
+        var workbook = OfficeDocument.OpenWorkbook(file.FullName);
+        foreach (var sheet in workbook.Sheets)
+        {
+            var usedRange = sheet.Cells.Count == 0
+                ? "(empty)"
+                : $"A1:{new CellRef(sheet.RowCount, sheet.ColumnCount).ToA1()}";
+            Console.WriteLine($"{sheet.Name}\t{usedRange}");
+        }
+    }
+    finally
+    {
+        Log(verbose, "list-sheets", ("file", file.FullName),
+            ("elapsed_ms", stopwatch.ElapsedMilliseconds));
+    }
+}, fileArg, verboseOption);
+root.AddCommand(listSheets);
+
 var valueArg = new Argument<string>("value", "Value to write");
 var writeCell = new Command("write-cell", "Write a single cell in an .xlsx workbook");
 writeCell.AddArgument(fileArg);
