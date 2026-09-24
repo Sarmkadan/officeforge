@@ -50,6 +50,7 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>, IEquatable<Xlsx
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ValidatePath(path);
         using var stream = File.Create(path);
         Write(model, stream);
     }
@@ -83,6 +84,7 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>, IEquatable<Xlsx
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ValidatePath(path);
 
         // Open the file stream with async support.
         await using var stream = new FileStream(
@@ -94,6 +96,14 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>, IEquatable<Xlsx
             useAsync: true);
 
         await WriteAsync(model, stream, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void ValidatePath(string path)
+    {
+        if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+        {
+            throw new ArgumentException("The path contains invalid characters.", nameof(path));
+        }
     }
 
     private static Cell CreateCell(CellRef cellRef, Models.CellValue value)

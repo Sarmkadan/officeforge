@@ -201,6 +201,7 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>, IEquatable<Docx
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ValidatePath(path);
         using var stream = File.OpenRead(path);
         return Read(stream);
     }
@@ -212,9 +213,29 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>, IEquatable<Docx
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(options);
         options.Validate();
+        ValidatePath(path);
 
         using var stream = File.OpenRead(path);
         return Read(stream, options);
+    }
+
+    private static void ValidatePath(string path)
+    {
+        if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+        {
+            throw new ArgumentException("The path contains invalid characters.", nameof(path));
+        }
+
+        // Check for path traversal attempts
+        var normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var parts = normalizedPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            if (part == ".." || part == ".")
+            {
+                throw new ArgumentException("The path cannot contain directory traversal sequences.", nameof(part));
+            }
+        }
     }
 
     // OnOff semantics: the bare element (<w:b/>) means on; an explicit

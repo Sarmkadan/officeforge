@@ -84,12 +84,13 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
     /// <param name="model">The document model to write.</param>
     /// <param name="path">The destination file path.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="model"/> or <paramref name="path"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is an empty string.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is an empty string or contains invalid characters.</exception>
     public void Write(DocumentModel model, string path)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ValidatePath(path);
         using var stream = File.Create(path);
         Write(model, stream);
     }
@@ -102,12 +103,13 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous write operation.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="model"/> or <paramref name="path"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is an empty string.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is an empty string or contains invalid characters.</exception>
     public async Task WriteAsync(DocumentModel model, string path, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ValidatePath(path);
 
         // Open the file stream with async enabled and delegate to the stream overload.
         await using var stream = new FileStream(
@@ -119,5 +121,24 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
             useAsync: true);
 
         await WriteAsync(model, stream, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void ValidatePath(string path)
+    {
+        if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+        {
+            throw new ArgumentException("The path contains invalid characters.", nameof(path));
+        }
+
+        // Check for path traversal attempts
+        var normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var parts = normalizedPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            if (part == ".." || part == ".")
+            {
+                throw new ArgumentException("The path cannot contain directory traversal sequences.", nameof(part));
+            }
+        }
     }
 }

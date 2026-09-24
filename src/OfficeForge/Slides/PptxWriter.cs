@@ -51,14 +51,34 @@ public sealed class PptxWriter : IDocumentWriter<PresentationModel>
     /// <param name="model">The presentation model to write.</param>
     /// <param name="path">The file path to write to.</param>
     /// <exception cref="ArgumentNullException"><paramref name="model"/> is <see langword="null"/></exception>
-    /// <exception cref="ArgumentException"><paramref name="path"/> is <see langword="null"/>, empty, or whitespace</exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is <see langword="null"/>, empty, whitespace, or contains invalid characters</exception>
     public void Write(PresentationModel model, string path)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(path);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ValidatePath(path);
         using var stream = File.Create(path);
         Write(model, stream);
+    }
+
+    private static void ValidatePath(string path)
+    {
+        if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+        {
+            throw new ArgumentException("The path contains invalid characters.", nameof(path));
+        }
+
+        // Check for path traversal attempts
+        var normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var parts = normalizedPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            if (part == ".." || part == ".")
+            {
+                throw new ArgumentException("The path cannot contain directory traversal sequences.", nameof(part));
+            }
+        }
     }
 
     private static Slide CreateSlide(SlideModel slideModel)

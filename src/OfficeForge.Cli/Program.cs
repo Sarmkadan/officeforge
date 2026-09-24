@@ -9,7 +9,7 @@ var root = new RootCommand("Create, edit and convert Word/Excel/PowerPoint docum
 var verboseOption = new Option<bool>("--verbose", "Emit structured diagnostic information to stderr");
 root.AddGlobalOption(verboseOption);
 
-var fileArg = new Argument<FileInfo>("file", "Path to the document");
+var fileArg = new Argument<string>("file", "Path to the document");
 var cellArg = new Argument<string>("cell", "Cell reference in A1 notation");
 var sheetOption = new Option<string?>("--sheet", "Worksheet name (defaults to the first sheet)");
 
@@ -17,8 +17,10 @@ var readCell = new Command("read-cell", "Read a single cell from an .xlsx workbo
 readCell.AddArgument(fileArg);
 readCell.AddArgument(cellArg);
 readCell.AddOption(sheetOption);
-readCell.SetHandler((FileInfo file, string cell, string? sheetName, bool verbose) =>
+readCell.SetHandler((string filePath, string cell, string? sheetName, bool verbose) =>
 {
+    ValidatePath(filePath);
+    var file = new FileInfo(filePath);
     var stopwatch = Stopwatch.StartNew();
     var resolvedSheetName = sheetName ?? "<first>";
     try
@@ -38,8 +40,10 @@ root.AddCommand(readCell);
 
 var listSheets = new Command("list-sheets", "List worksheets and their used ranges in an .xlsx workbook");
 listSheets.AddArgument(fileArg);
-listSheets.SetHandler((FileInfo file, bool verbose) =>
+listSheets.SetHandler((string filePath, bool verbose) =>
 {
+    ValidatePath(filePath);
+    var file = new FileInfo(filePath);
     var stopwatch = Stopwatch.StartNew();
     try
     {
@@ -66,8 +70,10 @@ writeCell.AddArgument(fileArg);
 writeCell.AddArgument(cellArg);
 writeCell.AddArgument(valueArg);
 writeCell.AddOption(sheetOption);
-writeCell.SetHandler((FileInfo file, string cell, string value, string? sheetName, bool verbose) =>
+writeCell.SetHandler((string filePath, string cell, string value, string? sheetName, bool verbose) =>
 {
+    ValidatePath(filePath);
+    var file = new FileInfo(filePath);
     var stopwatch = Stopwatch.StartNew();
     var resolvedSheetName = sheetName ?? "<first>";
     try
@@ -89,32 +95,40 @@ writeCell.SetHandler((FileInfo file, string cell, string value, string? sheetNam
 root.AddCommand(writeCell);
 
 var formatOption = new Option<ExportFormat>("--format", () => ExportFormat.Text, "Output format");
-var outputOption = new Option<FileInfo?>("--output", "Output file (stdout when omitted)");
+var outputOption = new Option<string?>("--output", "Output file (stdout when omitted)");
 var convert = new Command("convert", "Convert a document to text, markdown or json");
 convert.AddArgument(fileArg);
 convert.AddOption(formatOption);
 convert.AddOption(outputOption);
-convert.SetHandler((FileInfo file, ExportFormat format, FileInfo? output, bool verbose) =>
+convert.SetHandler((string filePath, ExportFormat format, string? outputPath, bool verbose) =>
 {
+    ValidatePath(filePath);
+    var file = new FileInfo(filePath);
+    if (outputPath != null)
+    {
+        ValidatePath(outputPath);
+    }
     var stopwatch = Stopwatch.StartNew();
     try
     {
         var result = OfficeDocument.Export(file.FullName, format);
-        if (output is null) Console.Write(result);
-        else File.WriteAllText(output.FullName, result);
+        if (outputPath == null) Console.Write(result);
+        else File.WriteAllText(outputPath, result);
     }
     finally
     {
         Log(verbose, "convert", ("file", file.FullName), ("format", format),
-            ("output", output?.FullName ?? "stdout"), ("elapsed_ms", stopwatch.ElapsedMilliseconds));
+            ("output", outputPath ?? "stdout"), ("elapsed_ms", stopwatch.ElapsedMilliseconds));
     }
 }, fileArg, formatOption, outputOption, verboseOption);
 root.AddCommand(convert);
 
 var extractText = new Command("extract-text", "Extract plain text from a document");
 extractText.AddArgument(fileArg);
-extractText.SetHandler((FileInfo file, bool verbose) =>
+extractText.SetHandler((string filePath, bool verbose) =>
 {
+    ValidatePath(filePath);
+    var file = new FileInfo(filePath);
     var stopwatch = Stopwatch.StartNew();
     try
     {
@@ -129,29 +143,31 @@ extractText.SetHandler((FileInfo file, bool verbose) =>
 }, fileArg, verboseOption);
 root.AddCommand(extractText);
 
-var templateOutputArg = new Argument<FileInfo>("output", "Path for the filled copy");
+var templateOutputArg = new Argument<string>("output", "Path for the filled copy");
 var setOption = new Option<string[]>("--set", "Placeholder values as key=value") { AllowMultipleArgumentsPerToken = true };
 var fillTemplate = new Command("fill-template", "Fill {{placeholders}} in a .docx or .xlsx template");
 fillTemplate.AddArgument(fileArg);
 fillTemplate.AddArgument(templateOutputArg);
 fillTemplate.AddOption(setOption);
-fillTemplate.SetHandler((FileInfo file, FileInfo output, string[] pairs, bool verbose) =>
+fillTemplate.SetHandler((string templatePath, string outputPath, string[] pairs, bool verbose) =>
 {
+    ValidatePath(templatePath);
+    ValidatePath(outputPath);
     var stopwatch = Stopwatch.StartNew();
     try
     {
         var filler = new TemplateFiller(TemplateFiller.ParsePairs(pairs));
-        switch (OfficeDocument.DetectKind(file.FullName))
+        switch (OfficeDocument.DetectKind(templatePath))
         {
             case DocumentKind.Workbook:
-                var workbook = OfficeDocument.OpenWorkbook(file.FullName);
+                var workbook = OfficeDocument.OpenWorkbook(templatePath);
                 filler.Fill(workbook);
-                OfficeDocument.SaveWorkbook(workbook, output.FullName);
+                OfficeDocument.SaveWorkbook(workbook, outputPath);
                 break;
             case DocumentKind.Document:
-                var document = OfficeDocument.OpenDocument(file.FullName);
+                var document = OfficeDocument.OpenDocument(templatePath);
                 filler.Fill(document);
-                OfficeDocument.SaveDocument(document, output.FullName);
+                OfficeDocument.SaveDocument(document, outputPath);
                 break;
             default:
                 throw new NotSupportedException("Template filling supports .docx and .xlsx files.");
@@ -159,7 +175,7 @@ fillTemplate.SetHandler((FileInfo file, FileInfo output, string[] pairs, bool ve
     }
     finally
     {
-        Log(verbose, "fill-template", ("file", file.FullName), ("output", output.FullName),
+        Log(verbose, "fill-template", ("file", templatePath), ("output", outputPath),
             ("set_count", pairs.Length), ("elapsed_ms", stopwatch.ElapsedMilliseconds));
     }
 }, fileArg, templateOutputArg, setOption, verboseOption);
@@ -196,4 +212,23 @@ static void Log(bool verbose, string evt, params (string key, object? value)[] f
         Console.Error.Write(value);
     }
     Console.Error.WriteLine();
+}
+
+static void ValidatePath(string path)
+{
+    if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+    {
+        throw new ArgumentException("The path contains invalid characters.", nameof(path));
+    }
+
+    // Check for path traversal attempts
+    var normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+    var parts = normalizedPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+    foreach (var part in parts)
+    {
+        if (part == ".." || part == ".")
+        {
+            throw new ArgumentException("The path cannot contain directory traversal sequences.", nameof(part));
+        }
+    }
 }
