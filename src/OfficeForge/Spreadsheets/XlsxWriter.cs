@@ -104,6 +104,17 @@ public sealed class XlsxWriter : IDocumentWriter<WorkbookModel>, IEquatable<Xlsx
         {
             throw new ArgumentException("The path contains invalid characters.", nameof(path));
         }
+
+        // Check for path traversal attempts
+        var normalizedPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var parts = normalizedPath.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            if (part == ".." || part == ".")
+            {
+                throw new ArgumentException("The path cannot contain directory traversal sequences.", nameof(part));
+            }
+        }
     }
 
     private static Cell CreateCell(CellRef cellRef, Models.CellValue value)
