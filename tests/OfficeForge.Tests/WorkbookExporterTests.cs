@@ -64,6 +64,6 @@ public class WorkbookExporterTests
     [Fact]
     public void ToPlainText_NullWorkbook_ThrowsNullReferenceException()
     {
-        Assert.Throws<NullReferenceException>(() => WorkbookExporter.ToPlainText(null!));
+        Assert.Throws<ArgumentNullException>(() => WorkbookExporter.ToPlainText(null!));
     }
 }

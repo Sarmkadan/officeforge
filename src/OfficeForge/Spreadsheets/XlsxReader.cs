@@ -40,7 +40,7 @@ public sealed class XlsxReader : IDocumentReader<WorkbookModel>, IEquatable<Xlsx
         if (stream.CanSeek)
         {
             stream.Position = 0;
-            using var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read, false);
+            using var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read, true);
 
             // Check entry count
             if (options.MaxEntryCount > 0 && zipArchive.Entries.Count > options.MaxEntryCount)

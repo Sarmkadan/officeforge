@@ -28,7 +28,7 @@ public class TemplateFillerTests
     public void FillText_ReplacesKnownPlaceholders()
     {
         var filler = Filler(("name", "Ada"), ("company", "Acme"));
-        Assert.Equal(TemplateFillerTestsConstants.PlaceholderKnown,
+        Assert.Equal("Dear Ada, welcome to Acme!",
             filler.FillText(TemplateFillerTestsConstants.PlaceholderKnown));
     }
 

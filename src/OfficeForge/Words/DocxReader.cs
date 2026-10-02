@@ -56,7 +56,7 @@ public sealed class DocxReader : IDocumentReader<DocumentModel>, IEquatable<Docx
         if (stream.CanSeek)
         {
             stream.Position = 0;
-            using var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read, false);
+            using var zipArchive = new ZipArchive(stream, ZipArchiveMode.Read, true);
 
             // Entry count limit
             if (options.MaxEntryCount > 0 && zipArchive.Entries.Count > options.MaxEntryCount)

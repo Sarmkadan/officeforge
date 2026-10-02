@@ -18,11 +18,16 @@ public class OfficeDocumentTests
         Assert.Equal(expectedKind, result);
     }
 
+    [Fact]
+    public void DetectKind_ThrowsArgumentNullException_ForNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => OfficeDocument.DetectKind(null!));
+    }
+
     [Theory]
-    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void DetectKind_ThrowsArgumentException_ForNullOrWhitespace(string fileName)
+    public void DetectKind_ThrowsArgumentException_ForEmptyOrWhitespace(string fileName)
     {
         Assert.Throws<ArgumentException>(() => OfficeDocument.DetectKind(fileName));
     }
