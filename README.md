@@ -84,7 +84,7 @@ officeforge convert report.xlsx --format markdown
 | --- | --- |
 | Excel (.xlsx) | read, write, cell-level editing, formulas |
 | Word (.docx) | read, write (paragraphs, headings, tables) |
-| PowerPoint (.pptx) | read (slides, titles, shape text) |
+| PowerPoint (.pptx) | read, write (slides, titles, shape text) |
 | Templates | `{{key}}` placeholder fill in .docx and .xlsx |
 | Export | text, markdown, json from any supported format |
 
@@ -143,6 +143,57 @@ var pairs = TemplateFiller.ParsePairs(new[]
 });
 // pairs["key"] is "a=b", pairs["other"] is "x"
 ```
+
+## Presentations
+
+Build a deck with a title slide and a bullet slide, then save it as `.pptx`. Each entry in `ShapeTextModel.Lines` is one line of text in the shape; the title goes into the slide's title placeholder:
+
+```csharp
+using OfficeForge.Models;
+using OfficeForge.Slides;
+
+var presentation = new PresentationModel();
+
+// Title slide: the title goes into the title placeholder, the subtitle into a text shape
+var titleSlide = presentation.AddSlide("Quarterly Review");
+var subtitle = new ShapeTextModel { Name = "Subtitle" };
+subtitle.Lines.Add("Engineering, Q3 2026");
+titleSlide.Shapes.Add(subtitle);
+
+// Bullet slide: one entry in Lines per bullet
+var bulletSlide = presentation.AddSlide("Highlights");
+var bullets = new ShapeTextModel { Name = "Bullets" };
+bullets.Lines.Add("Revenue up 12% quarter over quarter");
+bullets.Lines.Add("Two releases shipped on schedule");
+bullets.Lines.Add("Hiring plan on track for Q4");
+bulletSlide.Shapes.Add(bullets);
+
+new PptxWriter().Write(presentation, "quarterly-review.pptx");
+```
+
+Open an existing `.pptx` and print each slide's title and the text of its shapes:
+
+```csharp
+using OfficeForge.Slides;
+
+var presentation = new PptxReader().Read("quarterly-review.pptx");
+
+for (var i = 0; i < presentation.Slides.Count; i++)
+{
+    var slide = presentation.Slides[i];
+    Console.WriteLine($"Slide {i + 1}: {slide.Title ?? "(no title)"}");
+
+    foreach (var shape in slide.Shapes)
+    {
+        foreach (var line in shape.Lines)
+        {
+            Console.WriteLine($"  {line}");
+        }
+    }
+}
+```
+
+Supported: a title placeholder per slide and plain text shapes, with each shape's lines written as one paragraph joined by `\n` (read and write). Not supported: bullet glyphs and paragraph levels, run formatting, images, tables, charts, speaker notes, and slide masters, layouts or themes (the writer emits none, and the reader ignores notes).
 
 ## Architecture
 
