@@ -1,5 +1,7 @@
+using System;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using DocumentFormat.OpenXml;
@@ -14,6 +16,32 @@ namespace OfficeForge.Words;
 /// </summary>
 public sealed class DocxWriter : IDocumentWriter<DocumentModel>
 {
+    private const int TwipsPerPoint = 20;
+    private const uint HeaderFooterTwips = 720;
+
+    /// <summary>
+    /// Gets the options that control default fonts, page margins and compression.
+    /// </summary>
+    public DocxWriterOptions Options { get; }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="DocxWriter"/> using <see cref="DocxWriterOptions.Default"/>.
+    /// </summary>
+    public DocxWriter() : this(DocxWriterOptions.Default) { }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="DocxWriter"/> with the specified <paramref name="options"/>.
+    /// </summary>
+    /// <param name="options">The writer options.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="options"/> fails validation.</exception>
+    public DocxWriter(DocxWriterOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+        Options = options;
+    }
+
     /// <summary>
     /// Writes the supplied <paramref name="model"/> to the given <paramref name="stream"/>.
     /// </summary>
@@ -24,8 +52,28 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(stream);
+
+        // Build the package in memory first so it can be re-compressed at the configured level.
+        using var buffer = new MemoryStream();
+        BuildPackage(model, buffer);
+        Recompress(buffer, stream, Options.CompressionLevel);
+    }
+
+    private void BuildPackage(DocumentModel model, Stream stream)
+    {
         using var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document);
         var mainPart = document.AddMainDocumentPart();
+
+        var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+        var halfPoints = ToHalfPoints(Options.DefaultFontSize);
+        stylesPart.Styles = new Styles(
+            new DocDefaults(
+                new RunPropertiesDefault(
+                    new RunPropertiesBaseStyle(
+                        new RunFonts { Ascii = Options.DefaultFontName, HighAnsi = Options.DefaultFontName },
+                        new FontSize { Val = halfPoints },
+                        new FontSizeComplexScript { Val = halfPoints }))));
+
         var body = new Body();
         foreach (var paragraphModel in model.Paragraphs)
         {
@@ -54,9 +102,45 @@ public sealed class DocxWriter : IDocumentWriter<DocumentModel>
             body.Append(paragraph);
         }
 
+        var margins = Options.PageMargins;
+        body.Append(new SectionProperties(new PageMargin
+        {
+            Top = ToTwips(margins.Top),
+            Bottom = ToTwips(margins.Bottom),
+            Left = (uint)ToTwips(margins.Left),
+            Right = (uint)ToTwips(margins.Right),
+            Header = HeaderFooterTwips,
+            Footer = HeaderFooterTwips,
+            Gutter = 0
+        }));
+
         mainPart.Document = new Document(body);
         mainPart.Document.Save();
     }
+
+    /// <summary>
+    /// Copies every entry of the package in <paramref name="source"/> into <paramref name="target"/>,
+    /// compressing each entry with <paramref name="level"/>.
+    /// </summary>
+    private static void Recompress(Stream source, Stream target, CompressionLevel level)
+    {
+        source.Position = 0;
+        using var input = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
+        using var output = new ZipArchive(target, ZipArchiveMode.Create, leaveOpen: true);
+        foreach (var entry in input.Entries)
+        {
+            var copy = output.CreateEntry(entry.FullName, level);
+            using var from = entry.Open();
+            using var to = copy.Open();
+            from.CopyTo(to);
+        }
+    }
+
+    private static string ToHalfPoints(double points) =>
+        ((int)Math.Round(points * 2, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture);
+
+    private static int ToTwips(double points) =>
+        (int)Math.Round(points * TwipsPerPoint, MidpointRounding.AwayFromZero);
 
     /// <summary>
     /// Asynchronously writes the supplied <paramref name="model"/> to the given <paramref name="stream"/>.

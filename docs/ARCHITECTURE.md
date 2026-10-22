@@ -77,6 +77,9 @@ path overloads just open a `FileStream` and delegate).
   paragraphs (levels 1-9), Bold/Italic/Underline/RunFonts run properties, and
   `xml:space="preserve"` on every text node so leading/trailing whitespace
   survives.
+  `DocxWriterOptions` sets the document-default font (`DefaultFontName`,
+  `DefaultFontSize` in points), `PageMargins` (points, written as `sectPr`
+  margins), and the ZIP `CompressionLevel`; the constructor calls `Validate()`.
 - `PptxReader` - read-only. Walks `SlideIdList` in presentation order, and per
   slide extracts non-empty text lines per shape. The first Title/CenteredTitle
   placeholder becomes `SlideModel.Title`; everything else becomes a
