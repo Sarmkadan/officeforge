@@ -196,7 +196,9 @@ public sealed class PptxReader : IDocumentReader<PresentationModel>, IEquatable<
                 foreach (var shape in slidePart.Slide.Descendants<Shape>())
                 {
                     var lines = shape.TextBody?.Descendants<A.Paragraph>()
-                        .Select(p => string.Concat(p.Descendants<A.Text>().Select(t => t.Text)))
+                        .SelectMany(p => p.Descendants<A.Text>()
+                            .Select(t => t.Text)
+                            .SelectMany(text => text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)))
                         .Where(l => l.Length > 0)
                         .ToList() ?? [];
 
