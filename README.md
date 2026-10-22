@@ -11,6 +11,43 @@ dotnet add package OfficeForge          # library
 dotnet tool install -g OfficeForge.Cli  # CLI (command: officeforge)
 ```
 
+## Getting started
+
+Install the package into your project:
+
+```bash
+dotnet add package OfficeForge
+```
+
+Build a document with a heading and two paragraphs, then save it as `.docx`:
+
+```csharp
+using OfficeForge.Models;
+using OfficeForge.Words;
+
+var document = new DocumentModel();
+
+var title = document.AddParagraph("Quarterly Report");
+title.Kind = ParagraphKind.Heading;
+title.HeadingLevel = 1;
+
+document.AddParagraph("First paragraph of the report.");
+document.AddParagraph("Second paragraph with more detail.");
+
+new DocxWriter().Write(document, "report.docx");
+```
+
+Open an existing `.docx` and print the text of every paragraph:
+
+```csharp
+using OfficeForge.Words;
+
+var document = new DocxReader().Read("report.docx");
+
+foreach (var paragraph in document.Paragraphs)
+    Console.WriteLine(paragraph.Text);
+```
+
 ## Quickstart
 
 ```csharp
