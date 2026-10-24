@@ -24,7 +24,7 @@ public readonly record struct CellRef(int Row, int Column)
 	/// <exception cref="FormatException">Thrown when <paramref name="a1"/> is not a valid A1-style cell reference.
 	/// This includes:
 	/// - Invalid format (e.g., "1A", "A", "A:")
-	/// - Row or column out of Excel range (row < 1 or row > 1048576, column < 1 or column > 16384)
+	/// - Row or column out of Excel range (row &lt; 1 or row &gt; 1048576, column &lt; 1 or column &gt; 16384)
 	/// </exception>
 	public static CellRef Parse(string a1)
 	{

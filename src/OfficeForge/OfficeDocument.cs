@@ -109,10 +109,12 @@ public static class OfficeDocument
     /// <returns>The exported string.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> is null, empty or whitespace.</exception>
     /// <exception cref="NotSupportedException">Thrown when the file extension is unsupported.</exception>
+#pragma warning disable CS0618 // The facade intentionally keeps using the compatibility exporters
     public static string Export(string path, ExportFormat format) => DetectKind(path) switch
     {
         DocumentKind.Workbook => WorkbookExporter.Export(path, format),
         DocumentKind.Document => DocumentExporter.Export(path, format),
         _ => PresentationExporter.Export(path, format)
     };
+#pragma warning restore CS0618
 }

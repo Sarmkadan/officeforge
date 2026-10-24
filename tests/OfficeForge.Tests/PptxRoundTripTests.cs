@@ -152,17 +152,17 @@ public class PptxRoundTripTests : IDisposable
 
         // Validate package structure by examining the zip contents
         using var document = PresentationDocument.Open(path, false);
-        var presentationPart = document.PresentationPart;
+        var presentationPart = document.PresentationPart!;
 
         // Check presentation.xml has exactly 3 slide relationships
-        var slideIdList = presentationPart.Presentation.SlideIdList?.Elements<SlideId>();
+        var slideIdList = presentationPart.Presentation?.SlideIdList?.Elements<SlideId>();
         Assert.NotNull(slideIdList);
         Assert.Equal(3, slideIdList.Count());
 
         // Check each slide XML parses correctly
         foreach (var slideId in slideIdList!)
         {
-            var slidePart = presentationPart.GetPartById(slideId.RelationshipId!.Value);
+            var slidePart = presentationPart.GetPartById(slideId.RelationshipId!.Value!);
             using var slideStream = slidePart.GetStream();
             // Just verify it's valid XML - OpenXML already validated this during Read()
             Assert.True(true); // If we get here, the slide XML is valid

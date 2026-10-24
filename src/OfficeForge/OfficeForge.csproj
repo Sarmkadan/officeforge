@@ -15,6 +15,8 @@
     <RepositoryUrl>https://github.com/Sarmkadan/officeforge</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Sarmkadan/officeforge</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Docs are shipped in the package; missing-doc warnings are not enforced yet (TreatWarningsAsErrors). -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

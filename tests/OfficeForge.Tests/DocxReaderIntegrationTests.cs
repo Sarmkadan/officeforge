@@ -57,7 +57,7 @@ public class DocxReaderIntegrationTests : IDisposable
 
         // Assert
         Assert.Single(doc.Paragraphs);
-        Assert.Equal(1, doc.Paragraphs[0].Runs.Count);
+        Assert.Single(doc.Paragraphs[0].Runs);
         // The text should include content; line breaks in the XML may or may not be captured
         // depending on how the reader handles w:br - at minimum no exception should be thrown
         Assert.NotEmpty(doc.Paragraphs[0].Text);
@@ -159,7 +159,7 @@ public class DocxReaderIntegrationTests : IDisposable
 
             paragraph.Append(run);
             body.Append(paragraph);
-            doc.MainDocumentPart.Document = new Document(body);
+            doc.MainDocumentPart!.Document = new Document(body);
             doc.MainDocumentPart.Document.Save();
         }
         stream.Position = 0;
@@ -194,7 +194,7 @@ public class DocxReaderIntegrationTests : IDisposable
 
             table.Append(tableRow);
             body.Append(table);
-            doc.MainDocumentPart.Document = new Document(body);
+            doc.MainDocumentPart!.Document = new Document(body);
             doc.MainDocumentPart.Document.Save();
         }
         stream.Position = 0;
@@ -226,7 +226,7 @@ public class DocxReaderIntegrationTests : IDisposable
 
             paragraph.Append(sdt);
             body.Append(paragraph);
-            doc.MainDocumentPart.Document = new Document(body);
+            doc.MainDocumentPart!.Document = new Document(body);
             doc.MainDocumentPart.Document.Save();
         }
         stream.Position = 0;
